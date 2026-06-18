@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       if (req.query.recent) {
         const n = Math.min(parseInt(req.query.recent, 10) || 30, 200);
         const rows = await dbSelect('workouts', {
-          filters: { user_id: `eq.${USER_ID}` },
+          filters: { user_id: `eq.${uid}` },
           order: 'workout_date.desc',
           limit: n,
         });
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
       }
       const date = req.query.date || today();
       const rows = await dbSelect('workouts', {
-        filters: { user_id: `eq.${USER_ID}`, workout_date: `eq.${date}` },
+        filters: { user_id: `eq.${uid}`, workout_date: `eq.${date}` },
         limit: 1,
       });
       return res.status(200).json({ workout: rows[0] || null });
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const b = parseBody(req);
       const row = {
-        user_id:      USER_ID,
+        user_id:      uid,
         workout_date: b.date || today(),
         focus:        (b.focus || '').trim() || null,
         exercises:    cleanExercises(b.exercises),
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const id = req.query.id;
       if (!id) return res.status(400).json({ error: 'id required' });
-      await dbDelete('workouts', { user_id: `eq.${USER_ID}`, id: `eq.${id}` });
+      await dbDelete('workouts', { user_id: `eq.${uid}`, id: `eq.${id}` });
       return res.status(200).json({ ok: true });
     }
 

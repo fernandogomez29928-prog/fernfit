@@ -676,6 +676,41 @@
       background-clip: text;
       filter: drop-shadow(0 0 28px rgba(157,21,21,0.55)) drop-shadow(0 2px 6px rgba(0,0,0,0.6));
     }
+    /* ── Typing indicator ── */
+    .chat-typing { display: flex; align-items: center; gap: 5px; padding: 14px 16px; }
+    .chat-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-tertiary); animation: typing-bounce 1.2s ease-in-out infinite; }
+    .chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing-bounce { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
+    .stream-cursor { display: inline-block; animation: blink-cursor 0.8s step-end infinite; color: var(--accent); font-weight: 300; }
+    @keyframes blink-cursor { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+    .chat-msg-time { display: block; font: 400 10px var(--font-mono); color: var(--text-quaternary); margin-top: 5px; text-align: right; }
+    .chat-msg.bot .chat-msg-time { text-align: left; }
+
+    /* ── Skeleton loader ── */
+    @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+    .skeleton-line { height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%); background-size: 400px 100%; animation: shimmer 1.4s ease-in-out infinite; margin-bottom: 10px; }
+    .skeleton-line.w60 { width: 60%; }
+    .skeleton-line.w80 { width: 80%; }
+    .skeleton-line.w40 { width: 40%; }
+
+    /* ── Empty state cards ── */
+    .empty-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 32px 20px; border: 1px dashed var(--border-strong); border-radius: 18px; }
+    .empty-card-icon { font-size: 32px; line-height: 1; }
+    .empty-card-title { font: 700 14px var(--font); color: var(--text-primary); }
+    .empty-card-sub { font: 400 13px var(--font); color: var(--text-tertiary); }
+
+    /* ── Today's Intelligence one-liner ── */
+    .intel-card { margin-bottom: 14px; padding: 13px 16px; background: rgba(157,21,21,0.08); border: 1px solid rgba(157,21,21,0.22); border-radius: 16px; display: none; }
+    .intel-text { font: 500 13.5px/1.5 var(--font); color: #e8c8c8; font-style: italic; }
+    .intel-card.loaded { display: block; }
+
+    /* ── Profile progress bar ── */
+    .profile-progress-wrap { margin-bottom: 20px; }
+    .profile-progress-label { font: 600 11px var(--font-mono); letter-spacing: 0.1em; color: var(--text-tertiary); margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .profile-progress-bar { height: 4px; background: var(--border-soft); border-radius: 2px; overflow: hidden; }
+    .profile-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s ease; }
+
     /* ── Omni card (Coach tab) ── */
     .omni-card { display: flex; align-items: flex-start; gap: 12px; padding: 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; margin-bottom: 20px; }
     .omni-avatar { width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #ffffff; font: 800 18px/1 var(--font); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px rgba(200,40,40,0.25); }
@@ -1272,7 +1307,7 @@
           <!-- Calibrating banner -->
           <div id="whoopCalibrating" class="whoop-calibrating" style="display:none">
             <span class="whoop-cal-dot"></span>
-            WHOOP is still calibrating — early scores may shift over the next few weeks
+            Building your baselines — HRV and RHR trends appear after ~2 weeks of data
           </div>
 
           <!-- Hero recovery ring -->
@@ -1300,6 +1335,11 @@
               <div class="whoop-ring-unit">recovery</div>
               <div id="whoopRecoveryLabel" class="whoop-ring-label">—</div>
             </div>
+          </div>
+
+          <!-- Today's Intelligence one-liner -->
+          <div class="intel-card" id="intelCard">
+            <div class="intel-text" id="intelText"></div>
           </div>
 
           <!-- Sleep stages bar -->
@@ -1952,6 +1992,12 @@
       <div class="section-title">Profile</div>
       <div class="section-sub" style="margin-bottom:20px;">Everything your coach reasons from.</div>
 
+      <!-- Profile completeness bar -->
+      <div class="profile-progress-wrap" id="profileProgressWrap">
+        <div class="profile-progress-label"><span>PROFILE SETUP</span><span id="profileProgressPct">0%</span></div>
+        <div class="profile-progress-bar"><div class="profile-progress-fill" id="profileProgressFill" style="width:0%"></div></div>
+      </div>
+
       <div class="panel">
         <!-- Basics -->
         <div class="eyebrow" style="margin-bottom:12px;">Basics</div>
@@ -2283,17 +2329,20 @@
           animateValue('whoopHrv', 0, hrv, 700);
           animateValue('whoopRhr', 0, rhr, 700);
           setRing(score);
+          refreshCoachSuggestions(score);
           startHolo();
           setZone('whoopZoneHrv', zone(hrv, 60, 40));
           setZone('whoopZoneRhr', score >= 67 ? 'z-good' : score >= 34 ? 'z-norm' : 'z-warn');
 
-          /* Calibrating banner: show if account < 30 days old (best effort) */
+          /* Calibrating banner: show if account < 14 days old (best effort) */
           const created = rec?.records?.[0]?.created_at;
           if (created) {
             const age = (Date.now() - new Date(created).getTime()) / 86400000;
             const cal = document.getElementById('whoopCalibrating');
-            if (cal) cal.style.display = age < 30 ? 'flex' : 'none';
+            if (cal) cal.style.display = age < 14 ? 'flex' : 'none';
           }
+          /* Today's Intelligence one-liner */
+          loadIntelCard();
         }
 
         /* Sleep */
@@ -2736,7 +2785,7 @@
           <button class="chk-del" data-del="${i}" aria-label="Remove">×</button>`;
         wrap.appendChild(row);
       });
-      wrap.querySelectorAll('.chk-box').forEach(b => b.addEventListener('click', () => { habits[b.dataset.i].done = !habits[b.dataset.i].done; renderHabits(); }));
+      wrap.querySelectorAll('.chk-box').forEach(b => b.addEventListener('click', () => { habits[b.dataset.i].done = !habits[b.dataset.i].done; haptic(30); renderHabits(); }));
       wrap.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => { habits.splice(b.dataset.del, 1); renderHabits(); }));
       wrap.querySelectorAll('[data-edit]').forEach(s => s.addEventListener('click', () => {
         const i = s.dataset.edit; const v = prompt('Habit name:', habits[i].name); if (v != null) { habits[i].name = v.trim() || habits[i].name; renderHabits(); }
@@ -2958,6 +3007,18 @@
       });
     }
 
+    function calcTDEE(p) {
+      if (!p?.weight_kg || !p?.height_cm || !p?.age) return null;
+      const bmr = p.sex === 'female'
+        ? 10 * p.weight_kg + 6.25 * p.height_cm - 5 * p.age - 161
+        : 10 * p.weight_kg + 6.25 * p.height_cm - 5 * (p.age || 25) + 5;
+      const tdee = Math.round(bmr * 1.55);
+      const goal = p.primary_goal;
+      const cal = goal === 'lose_fat' ? tdee - 450 : goal === 'build_muscle' ? tdee + 400 : tdee;
+      const wLbs = kgToLbs(p.weight_kg);
+      const protein = Math.round(wLbs * (goal === 'lose_fat' ? 0.85 : 0.75));
+      return { calories: Math.max(1400, cal), protein };
+    }
     function fillProfile(p) {
       if (!p) return;
       for (const [el, key] of Object.entries(PF)) { if (p[key] != null) $(el).value = p[key]; }
@@ -2966,10 +3027,20 @@
       if (p.height_cm != null) { const h = cmToFtIn(p.height_cm); $('pfHeightFt').value = h.ft; $('pfHeightIn').value = h.in; }
       if (p.calorie_goal) { const el = $('goalCalInput'); if (el) el.value = p.calorie_goal; }
       if (p.protein_goal) { const el = $('goalProtInput'); if (el) el.value = p.protein_goal; }
+      /* Auto-calc TDEE placeholder for calorie/protein fields if not set */
+      const tdee = calcTDEE(p);
+      if (tdee) {
+        const pfCalEl = $('pfCal'), pfProtEl = $('pfProtein');
+        if (pfCalEl && !p.calorie_goal) pfCalEl.placeholder = tdee.calories + ' (estimated)';
+        if (pfProtEl && !p.protein_goal) pfProtEl.placeholder = tdee.protein + 'g (estimated)';
+        if (!p.calorie_goal) { const el = $('goalCalInput'); if (el) el.placeholder = tdee.calories; }
+        if (!p.protein_goal) { const el = $('goalProtInput'); if (el) el.placeholder = tdee.protein; }
+      }
       syncPills('pfSexPills', p.sex || '');
       syncPills('pfGoalPills', p.primary_goal || '');
       syncPills('pfDietPills', p.dietary_style || '');
       cachedProfile = p;
+      updateProfileProgress(p);
     }
 
     initPillGroup('pfSexPills', 'pfSex');
@@ -2988,6 +3059,7 @@
       body.height_cm = ftInToCm($('pfHeightFt').value, $('pfHeightIn').value);
       cachedProfile = body;
       lsSet('fernfit_profile', body);
+      updateProfileProgress(body);
       try { await apiPost('/api/profile', body); hint.className = 'save-hint ok'; hint.textContent = '✓ Saved'; }
       catch (e) { if (isConfigErr(e)) { hint.className = 'save-hint ok'; hint.textContent = '✓ Saved locally (connect Supabase to sync)'; } else { hint.className = 'save-hint err'; hint.textContent = e.message; } }
       setTimeout(() => { hint.textContent = ''; hint.className = 'save-hint'; }, 4000);
@@ -3014,10 +3086,60 @@
       return apiPost('/api/coach', payload);
     }
 
+    /* ── Today's Intelligence one-liner ── */
+    async function loadIntelCard() {
+      const card = $('intelCard'), text = $('intelText');
+      if (!card || !text) return;
+      const cacheKey = 'fernfit_intel_' + todayStr();
+      const cached = lsGet(cacheKey, null);
+      if (cached) { text.textContent = cached; card.classList.add('loaded'); return; }
+      try {
+        const { reply } = await callCoach({ mode: 'one_liner', whoop: whoop() });
+        if (reply && reply.length > 5) {
+          text.textContent = reply.replace(/[.!?]+$/, '');
+          card.classList.add('loaded');
+          lsSet(cacheKey, text.textContent);
+        }
+      } catch {}
+    }
+
+    /* ── Dynamic coach quick-actions by recovery score ── */
+    function refreshCoachSuggestions(score) {
+      const btns = document.querySelectorAll('[data-coach]');
+      if (!score || btns.length < 4) return;
+      const sets = score >= 75
+        ? [{ coach: 'workout', label: 'Hard session' }, { coach: 'meal', label: 'Performance fuel' }, { coach: 'recipe', label: 'High-protein recipes' }, { coach: 'grocery', label: 'Shopping list' }]
+        : score >= 45
+        ? [{ coach: 'workout', label: 'Moderate session' }, { coach: 'meal', label: 'Recovery meal plan' }, { coach: 'recipe', label: 'Recipe ideas' }, { coach: 'grocery', label: 'Shopping list' }]
+        : [{ coach: 'chat', label: 'Rest protocol', msg: 'Give me a full rest and recovery protocol for today.' }, { coach: 'chat', label: "What's hurting recovery?", msg: "Why is my recovery low and what can I do today?" }, { coach: 'meal', label: 'Anti-inflammatory foods' }, { coach: 'digest', label: 'Weekly digest' }];
+      btns.forEach((btn, i) => {
+        if (i >= sets.length) return;
+        const s = sets[i];
+        btn.dataset.coach = s.coach;
+        if (s.msg) btn.dataset.msg = s.msg;
+        btn.textContent = s.label;
+      });
+    }
+
+    /* ── Haptic feedback helper ── */
+    const haptic = (pattern) => { if (navigator.vibrate) navigator.vibrate(pattern); };
+
+    /* ── Profile completion progress bar ── */
+    function updateProfileProgress(p) {
+      const fields = [p?.name, p?.age, p?.weight_kg, p?.primary_goal, p?.dietary_style, p?.calorie_goal];
+      const filled = fields.filter(Boolean).length;
+      const pct = Math.round((filled / fields.length) * 100);
+      const fill = $('profileProgressFill'), pctEl = $('profileProgressPct'), wrap = $('profileProgressWrap');
+      if (!fill) return;
+      fill.style.width = pct + '%';
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (wrap) wrap.style.display = pct >= 100 ? 'none' : 'block';
+    }
+
     async function loadBriefing() {
       const body = $('briefingBody');
       body.className = 'briefing-loading';
-      body.innerHTML = '<span class="spinner"></span> Generating your briefing…';
+      body.innerHTML = '<div class="skeleton-line w80"></div><div class="skeleton-line w60"></div><div class="skeleton-line w40"></div>';
       try {
         const { reply } = await callCoach({ mode: 'briefing', whoop: whoop(), body: bodyContext(), program: getActiveProgram() });
         body.className = 'md';
@@ -3037,14 +3159,86 @@
       const empty = $('chatEmpty'); if (empty) empty.remove();
       const div = document.createElement('div');
       div.className = 'chat-msg ' + (role === 'user' ? 'user' : 'bot');
-      div.innerHTML = role === 'user' ? esc(contentHTML) : '<div class="md">' + contentHTML + '</div>';
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      div.innerHTML = (role === 'user'
+        ? esc(contentHTML)
+        : '<div class="md">' + contentHTML + '</div>')
+        + '<span class="chat-msg-time">' + timeStr + '</span>';
       $('chatLog').appendChild(div);
       const _cl = $('chatLog'); _cl.scrollTop = _cl.scrollHeight;
       return div;
     }
+    function addTypingIndicator() {
+      const empty = $('chatEmpty'); if (empty) empty.remove();
+      const div = document.createElement('div');
+      div.className = 'chat-msg bot';
+      div.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+      $('chatLog').appendChild(div);
+      $('chatLog').scrollTop = $('chatLog').scrollHeight;
+      return div;
+    }
+    /* ── Streaming chat path ── */
+    async function streamChat(text, typingEl) {
+      const r = await fetch('/api/coach', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ mode: 'chat', stream: true, message: text, whoop: whoop(), body: bodyContext(), history: chatHistory, program: getActiveProgram() }),
+      });
+      if (!r.ok) {
+        typingEl.remove();
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.error || 'HTTP ' + r.status);
+      }
+      typingEl.remove();
+      const bubble = addBubble('bot', '');
+      const mdDiv = bubble.querySelector('.md');
+      let fullText = '';
+      const cursor = document.createElement('span');
+      cursor.className = 'stream-cursor';
+      cursor.textContent = '▌';
+      mdDiv.appendChild(cursor);
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') { cursor.remove(); break; }
+            try {
+              const ev = JSON.parse(data);
+              if (ev.error) { cursor.remove(); mdDiv.innerHTML = '<span style="color:var(--danger)">' + esc(ev.error) + '</span>'; return; }
+              if (ev.text) { fullText += ev.text; cursor.remove(); mdDiv.textContent = fullText; mdDiv.appendChild(cursor); $('chatLog').scrollTop = $('chatLog').scrollHeight; }
+            } catch {}
+          }
+        }
+      } finally { cursor.remove(); }
+      const goalsMatch = fullText.match(/###GOALS###({.*?})###GOALS###/s);
+      const rememberMatch = fullText.match(/###REMEMBER###({.*?})###REMEMBER###/s);
+      const cleanReply = fullText.replace(/\n?###GOALS###.*?###GOALS###/s, '').replace(/\n?###REMEMBER###.*?###REMEMBER###/s, '').trim();
+      mdDiv.innerHTML = md(cleanReply);
+      addReplyActions(bubble, cleanReply, 'chat');
+      if (rememberMatch) { try { const fact = JSON.parse(rememberMatch[1]).fact; if (fact?.trim()) { const card = document.createElement('div'); card.className = 'remember-card'; card.innerHTML = `<div class="remember-q">Want me to remember this?</div><div class="remember-fact">"${esc(fact.trim())}"</div><div class="remember-actions"><button class="btn btn-ghost remember-no" type="button">No thanks</button><button class="btn btn-primary remember-yes" type="button">Yes, remember it</button></div>`; mdDiv.appendChild(card); card.querySelector('.remember-yes').addEventListener('click', () => { addMemory(fact.trim()); card.innerHTML = '<div class="remember-q" style="color:var(--accent)">📌 Got it.</div>'; }); card.querySelector('.remember-no').addEventListener('click', () => card.remove()); } } catch {} }
+      if (goalsMatch) { try { const goals = JSON.parse(goalsMatch[1]); const card = document.createElement('div'); card.className = 'panel'; card.style.cssText = 'margin-top:12px;border:1px solid rgba(200,40,40,0.3);background:rgba(200,40,40,0.05)'; card.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:10px">Recommended goals</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-bottom:14px"><div><div style="font-size:20px;font-weight:800;color:var(--accent)">${goals.calories}</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">cal</div></div><div><div style="font-size:20px;font-weight:800">${goals.protein}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">protein</div></div><div><div style="font-size:20px;font-weight:800">${goals.carbs}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">carbs</div></div><div><div style="font-size:20px;font-weight:800">${goals.fat}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">fat</div></div></div><button class="btn btn-primary btn-block" id="applyGoalsBtn" type="button">Apply these goals →</button>`; mdDiv.appendChild(card); card.querySelector('#applyGoalsBtn').addEventListener('click', async () => { card.querySelector('#applyGoalsBtn').textContent = 'Saving…'; card.querySelector('#applyGoalsBtn').disabled = true; const updates = { calorie_goal: goals.calories, protein_goal: goals.protein }; cachedProfile = { ...(cachedProfile || {}), ...updates }; lsSet('fernfit_profile', cachedProfile); const pfCalEl = $('pfCal'), pfProtEl = $('pfProtein'); if (pfCalEl) pfCalEl.value = goals.calories; if (pfProtEl) pfProtEl.value = goals.protein; try { await apiPost('/api/profile', updates); } catch {} renderFoodTotals(); showToast('Goals updated ✓'); card.querySelector('#applyGoalsBtn').textContent = '✓ Applied'; }); } catch {} }
+      if (text) chatHistory.push({ role: 'user', content: text });
+      chatHistory.push({ role: 'assistant', content: cleanReply });
+    }
     async function sendChat(text, mode) {
       if (!text && !mode) return;
+      haptic(10);
       if (text) addBubble('user', text);
+      /* For plain chat, use streaming */
+      if (!mode || mode === 'chat') {
+        const typingEl = addTypingIndicator();
+        try { await streamChat(text, typingEl); } catch (e) { typingEl.remove(); addBubble('bot', '<div class="md"><span style="color:var(--danger)">' + esc(e.message) + '</span></div>'); }
+        return;
+      }
       const loading = addBubble('bot', '<span class="spinner"></span>');
       try {
         const { reply } = await callCoach({
@@ -3197,6 +3391,8 @@
 
     document.querySelectorAll('[data-coach]').forEach(b => b.addEventListener('click', () => {
       const mode = b.dataset.coach;
+      /* If a dynamic custom message was set (e.g. low-recovery buttons), use it */
+      if (b.dataset.msg) { sendChat(b.dataset.msg, 'chat'); return; }
       const label = {
         meal: 'Build me a meal plan for today.',
         recipe: 'Give me recipe ideas that fit my goals and supplement stack.',
@@ -3692,7 +3888,7 @@
     }
     function renderFoodLog() {
       const el = $('foodLogList');
-      if (!foodToday.length) { el.innerHTML = '<div class="empty-hint">Nothing logged yet today. Snap your first meal above.</div>'; return; }
+      if (!foodToday.length) { el.innerHTML = '<div class="empty-card"><div class="empty-card-icon">🥗</div><div class="empty-card-title">Nothing logged yet</div><div class="empty-card-sub">Snap a photo or describe your meal above</div></div>'; return; }
       el.innerHTML = '';
       foodToday.forEach(m => {
         const row = document.createElement('div'); row.className = 'food-log-row';
@@ -3896,6 +4092,7 @@
       $('describeGoBtn').addEventListener('click', () => { const txt = $('describeInput').value.trim(); if (!txt) return; analyzeFood({ text: txt }); $('describeInput').value = ''; $('describeRow').style.display = 'none'; });
       $('foodDiscard').addEventListener('click', () => { $('foodEstimate').classList.remove('open'); $('photoContextRow').style.display = 'none'; });
       $('foodLogBtn').addEventListener('click', () => {
+        haptic([30, 50, 30]);
         const meal = {
           description: $('foodDesc').value.trim() || 'Meal',
           calories: Number($('foodCal').value) || 0, protein: Number($('foodProt').value) || 0,
@@ -3914,7 +4111,7 @@
     let memories = [];
     function renderMemories() {
       const el = $('memList');
-      if (!memories.length) { el.innerHTML = '<span style="font-size:12px;color:var(--text-quaternary)">Pin facts the coach should never forget — PRs, preferences, goals.</span>'; return; }
+      if (!memories.length) { el.innerHTML = '<div class="empty-card" style="border-style:dashed"><div class="empty-card-icon">🧠</div><div class="empty-card-title">Omni has a blank slate</div><div class="empty-card-sub">Pin facts — PRs, injuries, preferences, schedule</div></div>'; return; }
       el.innerHTML = '';
       memories.forEach(m => {
         const chip = document.createElement('span'); chip.className = 'mem-chip';
@@ -3982,7 +4179,7 @@
     }
     function renderTrends(logs, mealsByDate) {
       const el = $('trendsContent');
-      if (!logs || logs.length < 3) { el.innerHTML = '<div class="trend-empty">Collecting data — your recovery, weight and nutrition trends show up here after a few days of tracking.</div>'; return; }
+      if (!logs || logs.length < 3) { el.innerHTML = '<div class="empty-card"><div class="empty-card-icon">📈</div><div class="empty-card-title">Trends unlock after 3 days</div><div class="empty-card-sub">Log your check-in daily and they\'ll appear here</div></div>'; return; }
       const chrono = [...logs].reverse();
       let html = '';
       const recVals = chrono.map(l => l.recovery_score ?? null);
@@ -4159,7 +4356,7 @@
     async function loadHello() {
       const h = new Date().getHours();
       const greet = h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Winding down';
-      const name = (cachedProfile && cachedProfile.name) ? String(cachedProfile.name).split(' ')[0] : 'Fernando';
+      const name = (cachedProfile && cachedProfile.name) ? String(cachedProfile.name).split(' ')[0] : 'there';
       setText('helloGreet', greet + ', ' + name);
       setText('helloDate', new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }));
       try { const streak = computeStreak(await fetchLogs()); if (streak >= 2) { setText('streakNum', streak); $('streakChip').style.display = 'inline-flex'; } } catch {}

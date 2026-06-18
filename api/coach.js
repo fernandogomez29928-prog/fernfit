@@ -462,6 +462,8 @@ Then on its own line at the very end, output this marker with no extra text arou
 
 Replace the X values with integers. Do not output the marker anywhere except the last line.`,
 
+  one_liner: `Output ONE sentence — maximum 18 words, no markdown, no period at the end — stating the single most important thing about the user's body right now based on their WHOOP data and recent trends. Be specific about numbers. Examples: "HRV 14% above baseline — green light for intensity today", "Sleep debt stacking from two short nights — prioritize 8+ hours tonight", "Recovery dip after yesterday's high strain — moderate effort only". Just the sentence, nothing else.`,
+
   chat: `Answer Fernando's question as his coach, using his data above when relevant.
 Keep it conversational — match his energy and the way he talks. If he's asking something quick, answer quick.
 If he mentions supplements, sleep, body changes, food, or training, tie it to his actual numbers and history.
@@ -555,7 +557,8 @@ export default async function handler(req, res) {
   } else {
     const context = fmt({ profile, log, whoop: b.whoop, recent, body: b.body || null, meals, memories, program, workouts });
     const userTurn = mode === 'chat' ? (b.message || 'Give me a quick read on my day.') : instruction;
-    textContent = `${context}\n\n---\n\n${mode === 'chat' ? instruction + '\n\nFernando: ' + userTurn : userTurn}`;
+    const userName = profile?.name?.split(' ')[0] || 'Fernando';
+    textContent = `${context}\n\n---\n\n${mode === 'chat' ? instruction + '\n\n' + userName + ': ' + userTurn : userTurn}`;
   }
 
   // Build messages (chat history only matters for chat).
@@ -590,7 +593,9 @@ export default async function handler(req, res) {
     messages.push({ role: 'user', content: textContent });
   }
 
-  const maxTokens = mode === 'photo' ? 2000 : isFood ? 700 : 1500;
+  const maxTokens = mode === 'photo' ? 2000 : isFood ? 700 : mode === 'one_liner' ? 60 : 1500;
+  const systemPrompt = isFood ? 'You are a precise nutrition estimator. Output only what is asked.' : BASE_SYSTEM;
+  const wantsStream = b.stream === true && mode === 'chat';
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -603,10 +608,50 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: maxTokens,
-        system: isFood ? 'You are a precise nutrition estimator. Output only what is asked.' : BASE_SYSTEM,
+        stream: wantsStream,
+        system: systemPrompt,
         messages,
       }),
     });
+
+    // ── Streaming path (chat mode only) ────────────────────────────────
+    if (wantsStream) {
+      if (!r.ok) {
+        const errText = await r.text().catch(() => r.status);
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.write(`data: ${JSON.stringify({ error: 'Claude error ' + r.status + ': ' + errText })}\n\n`);
+        return res.end();
+      }
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(data);
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+              res.write(`data: ${JSON.stringify({ text: ev.delta.text })}\n\n`);
+            } else if (ev.type === 'message_stop') {
+              res.write('data: [DONE]\n\n');
+            }
+          } catch {}
+        }
+      }
+      return res.end();
+    }
+
+    // ── Non-streaming path ──────────────────────────────────────────────
     const j = await r.json();
     if (!r.ok) return res.status(500).json({ error: 'Claude: ' + JSON.stringify(j) });
     const reply = (j.content || []).map((c) => c.text || '').join('').trim();
