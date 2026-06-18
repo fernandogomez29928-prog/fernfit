@@ -753,6 +753,401 @@
     @media (min-width: 769px) {
       .fern-toast { bottom: 24px; }
     }
+
+    /* ============================================================
+       FUTURISTIC 2100 — VISUAL OVERHAUL
+    ============================================================ */
+
+    /* === Global animated aurora background === */
+    @keyframes aurora-drift {
+      0%,100% { background-position: 0% 50%; }
+      33%      { background-position: 60% 20%; }
+      66%      { background-position: 40% 80%; }
+    }
+
+    body::before {
+      background:
+        radial-gradient(ellipse 130% 70% at 15% -5%,  rgba(200,241,53,0.07)  0%, transparent 55%),
+        radial-gradient(ellipse 90%  90% at 85% 105%, rgba(107,227,164,0.05) 0%, transparent 55%),
+        radial-gradient(ellipse 70%  50% at 55%  50%, rgba(155,127,232,0.03) 0%, transparent 55%),
+        radial-gradient(ellipse 60%  40% at 90%   5%, rgba(200,241,53,0.04)  0%, transparent 55%) !important;
+      background-size: 200% 200% !important;
+      animation: aurora-drift 18s ease-in-out infinite !important;
+    }
+
+    /* Subtle scanline texture */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(255,255,255,0.006) 3px,
+        rgba(255,255,255,0.006) 4px
+      );
+    }
+
+    /* === Ambient floating light blobs === */
+    .ambient-blob {
+      position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+      will-change: transform; animation: blob-drift var(--blob-dur, 20s) ease-in-out infinite;
+      animation-delay: var(--blob-delay, 0s);
+    }
+    @keyframes blob-drift {
+      0%,100% { transform: translate(0, 0)   scale(1);    }
+      33%      { transform: translate(40px, -50px) scale(1.07); }
+      66%      { transform: translate(-25px, 30px) scale(0.93); }
+    }
+
+    /* === Cinematic page entry === */
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.992); filter: blur(3px); }
+      to   { opacity: 1; transform: none;                           filter: blur(0);  }
+    }
+
+    /* === SECTION TITLES — full neon gradient === */
+    .section-title {
+      font-size: 34px !important;
+      letter-spacing: -0.038em !important;
+      background: linear-gradient(135deg, #FFFFFF 0%, var(--accent) 55%, #6BE3A4 110%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+      filter: drop-shadow(0 0 28px rgba(200,241,53,0.18)) !important;
+    }
+
+    /* === Hello greeting === */
+    .hello-greet {
+      font-size: 38px !important;
+      letter-spacing: -0.04em !important;
+      background: linear-gradient(130deg, #FFFFFF 25%, rgba(200,241,53,0.85) 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+      filter: drop-shadow(0 0 22px rgba(200,241,53,0.14)) !important;
+    }
+
+    /* === AUTH LOGO === */
+    .auth-logo {
+      font-size: 34px !important;
+      letter-spacing: 0.22em !important;
+      background: linear-gradient(130deg, #FFFFFF 20%, var(--accent) 90%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+      filter: drop-shadow(0 0 24px rgba(200,241,53,0.3)) !important;
+    }
+
+    /* === NAV LOGO === */
+    .nav-logo {
+      letter-spacing: 0.22em !important;
+      background: linear-gradient(130deg, #FFFFFF 15%, var(--accent) 90%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+      filter: drop-shadow(0 0 12px rgba(200,241,53,0.25)) !important;
+    }
+    .nav-logo span { -webkit-text-fill-color: var(--accent) !important; }
+
+    /* === BUTTONS — neon glow pulse === */
+    @keyframes neon-pulse {
+      0%,100% { box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 6px 28px rgba(200,241,53,0.38), 0 0 50px rgba(200,241,53,0.18); }
+      50%      { box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 8px 48px rgba(200,241,53,0.60), 0 0 80px rgba(200,241,53,0.30); }
+    }
+    .btn-primary {
+      background: linear-gradient(155deg, #DEFF55 0%, #C8F135 52%, #AADE10 100%) !important;
+      color: #060700 !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.02em !important;
+      animation: neon-pulse 3.5s ease-in-out infinite;
+      border: none !important;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(155deg, #EAFF66 0%, #D4FF45 52%, #BAEA20 100%) !important;
+      transform: translateY(-2px) scale(1.01) !important;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 14px 56px rgba(200,241,53,0.7), 0 0 100px rgba(200,241,53,0.4) !important;
+      animation: none;
+    }
+    .btn-primary:active { transform: scale(0.97) !important; }
+
+    /* === CARDS — deeper glass === */
+    .card, .whoop-card {
+      backdrop-filter: blur(48px) saturate(200%) !important;
+      -webkit-backdrop-filter: blur(48px) saturate(200%) !important;
+    }
+    .panel, .stack-card {
+      backdrop-filter: blur(32px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+    }
+
+    /* === WHOOP CARD — animated neon border === */
+    @keyframes border-glow {
+      0%,100% { opacity: 0.4; }
+      50%      { opacity: 0.9; }
+    }
+    .whoop-card {
+      background: rgba(255,255,255,0.022) !important;
+      position: relative;
+      isolation: isolate;
+    }
+    .whoop-card::before {
+      content: '';
+      position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+      background: linear-gradient(135deg, rgba(200,241,53,0.12) 0%, rgba(107,227,164,0.04) 40%, transparent 70%);
+      opacity: 0.6;
+      animation: border-glow 6s ease-in-out infinite;
+    }
+
+    /* === RECOVERY RING — outer halo pulsing === */
+    @keyframes ring-halo-pulse {
+      0%,100% { opacity: 0.5; transform: scale(1);    }
+      50%      { opacity: 1.0; transform: scale(1.08); }
+    }
+    .whoop-ring-wrap {
+      isolation: isolate;
+    }
+    .whoop-ring-wrap::before {
+      content: '';
+      position: absolute; inset: -32px; border-radius: 50%; pointer-events: none; z-index: -1;
+      background: radial-gradient(circle, var(--ring-halo, rgba(200,241,53,0.12)) 0%, transparent 65%);
+      animation: ring-halo-pulse 4s ease-in-out infinite;
+    }
+
+    /* Recovery score number glow */
+    .whoop-ring-num {
+      font-size: 64px !important;
+      letter-spacing: -0.055em !important;
+      filter: drop-shadow(0 0 18px rgba(200,241,53,0.25)) !important;
+    }
+
+    /* === LIVE DOT — aggressive pulse === */
+    .whoop-live-dot {
+      width: 8px !important; height: 8px !important;
+      background: #6BE3A4 !important;
+      box-shadow: 0 0 0 3px rgba(107,227,164,0.18), 0 0 14px rgba(107,227,164,0.9) !important;
+    }
+
+    /* === STATS GRID — hover neon === */
+    .whoop-stat:hover {
+      background: rgba(200,241,53,0.05) !important;
+      border-color: rgba(200,241,53,0.22) !important;
+      box-shadow: 0 0 22px rgba(200,241,53,0.1), 0 1px 0 rgba(255,255,255,0.07) inset !important;
+      transform: translateY(-2px) !important;
+    }
+
+    /* === NAV MOBILE — neon active === */
+    @media (max-width: 768px) {
+      nav {
+        background: rgba(5,5,7,0.96) !important;
+        border-top: 1px solid rgba(200,241,53,0.09) !important;
+        box-shadow: 0 -1px 0 rgba(200,241,53,0.07), 0 -16px 48px rgba(0,0,0,0.7) !important;
+        backdrop-filter: blur(40px) saturate(250%) !important;
+        -webkit-backdrop-filter: blur(40px) saturate(250%) !important;
+      }
+      .nav-tab.active {
+        color: var(--accent) !important;
+        text-shadow: 0 0 18px rgba(200,241,53,0.8) !important;
+      }
+      .nav-tab.active .nav-icon {
+        filter: drop-shadow(0 0 10px rgba(200,241,53,0.9)) drop-shadow(0 0 22px rgba(200,241,53,0.5)) !important;
+      }
+      .nav-tab.active::before {
+        width: 26px !important; height: 3px !important;
+        background: var(--accent) !important;
+        box-shadow: 0 0 14px rgba(200,241,53,1), 0 0 36px rgba(200,241,53,0.6) !important;
+        border-radius: 999px !important;
+      }
+    }
+
+    /* === NAV DESKTOP — neon active === */
+    @media (min-width: 769px) {
+      nav {
+        background: rgba(7,7,9,0.92) !important;
+        border-bottom: 1px solid rgba(200,241,53,0.08) !important;
+        box-shadow: 0 1px 0 rgba(200,241,53,0.05), 0 8px 40px rgba(0,0,0,0.6) !important;
+      }
+      .nav-tab.active {
+        color: var(--accent) !important;
+        background: rgba(200,241,53,0.09) !important;
+        border: 1px solid rgba(200,241,53,0.18) !important;
+        box-shadow: 0 0 24px rgba(200,241,53,0.18) inset, 0 1px 0 rgba(200,241,53,0.25) !important;
+        text-shadow: 0 0 16px rgba(200,241,53,0.6) !important;
+      }
+    }
+
+    /* === INPUTS focus neon === */
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(200,241,53,0.65) !important;
+      background: rgba(255,255,255,0.06) !important;
+      box-shadow: 0 0 0 3px rgba(200,241,53,0.12), 0 0 24px rgba(200,241,53,0.12) !important;
+    }
+
+    /* === STREAK CHIP === */
+    @keyframes streak-glow {
+      0%,100% { box-shadow: 0 0 24px rgba(242,192,99,0.22), 0 1px 0 rgba(255,255,255,0.07) inset; }
+      50%      { box-shadow: 0 0 44px rgba(242,192,99,0.42), 0 1px 0 rgba(255,255,255,0.07) inset; }
+    }
+    .streak-chip {
+      animation: streak-glow 3.5s ease-in-out infinite !important;
+    }
+
+    /* === BRIEFING card === */
+    .briefing {
+      border-left: 3px solid var(--accent) !important;
+      box-shadow: -10px 0 36px rgba(200,241,53,0.14), 0 1px 0 rgba(255,255,255,0.05) inset !important;
+    }
+
+    /* === EYEBROWS === */
+    .eyebrow {
+      letter-spacing: 0.24em !important;
+      color: rgba(200,241,53,0.7) !important;
+      font-size: 10.5px !important;
+    }
+
+    /* === TREND INSIGHT === */
+    .trend-insight {
+      background: rgba(200,241,53,0.04) !important;
+      border: 1px solid rgba(200,241,53,0.22) !important;
+      box-shadow: 0 0 24px rgba(200,241,53,0.06) !important;
+    }
+
+    /* === REMEMBER CARD === */
+    .remember-card {
+      background: rgba(200,241,53,0.04) !important;
+      border: 1px solid rgba(200,241,53,0.24) !important;
+      box-shadow: 0 0 32px rgba(200,241,53,0.08) !important;
+    }
+
+    /* === OMNI AVATAR === */
+    @keyframes avatar-pulse {
+      0%,100% { box-shadow: 0 0 18px rgba(200,241,53,0.4), 0 4px 14px rgba(200,241,53,0.25); }
+      50%      { box-shadow: 0 0 36px rgba(200,241,53,0.7), 0 4px 24px rgba(200,241,53,0.4); }
+    }
+    .omni-avatar {
+      animation: avatar-pulse 3.5s ease-in-out infinite !important;
+    }
+
+    /* === CHAT USER BUBBLE === */
+    .chat-msg.user {
+      box-shadow: 0 4px 22px rgba(200,241,53,0.38), 0 0 48px rgba(200,241,53,0.18) !important;
+    }
+
+    /* === MOOD SELECTED === */
+    .mood-dot.sel {
+      box-shadow: 0 0 22px rgba(200,241,53,0.5), 0 4px 14px rgba(200,241,53,0.28) !important;
+    }
+
+    /* === VERDICT CARD === */
+    .whoop-verdict {
+      box-shadow: -6px 0 30px rgba(200,241,53,0.07), 0 1px 0 rgba(255,255,255,0.06) inset !important;
+    }
+
+    /* === EXPAND PANEL open === */
+    .whoop-expand-panel.open {
+      border-color: rgba(200,241,53,0.14) !important;
+      box-shadow: 0 0 32px rgba(200,241,53,0.06), 0 1px 0 rgba(255,255,255,0.05) inset !important;
+    }
+    .whoop-stat--clickable.open {
+      border-color: rgba(200,241,53,0.28) !important;
+      background: rgba(200,241,53,0.06) !important;
+      box-shadow: 0 0 24px rgba(200,241,53,0.12), 0 1px 0 rgba(255,255,255,0.06) inset !important;
+    }
+
+    /* === BEDTIME REC === */
+    .whoop-bedtime-rec {
+      background: rgba(200,241,53,0.05) !important;
+      border: 1px solid rgba(200,241,53,0.22) !important;
+      box-shadow: 0 0 20px rgba(200,241,53,0.08) !important;
+    }
+
+    /* === TOAST === */
+    .fern-toast {
+      background: rgba(10,10,14,0.97) !important;
+      border: 1px solid rgba(200,241,53,0.28) !important;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.75), 0 0 32px rgba(200,241,53,0.12) !important;
+    }
+
+    /* === MEMORY CHIPS === */
+    .mem-chip {
+      background: rgba(200,241,53,0.04) !important;
+      border: 1px solid rgba(200,241,53,0.16) !important;
+      transition: all 0.2s !important;
+    }
+    .mem-chip:hover {
+      background: rgba(200,241,53,0.08) !important;
+      border-color: rgba(200,241,53,0.28) !important;
+      box-shadow: 0 0 16px rgba(200,241,53,0.1) !important;
+    }
+
+    /* === PROMPT CHIPS === */
+    .prompt-chip:hover {
+      background: rgba(200,241,53,0.08) !important;
+      border-color: rgba(200,241,53,0.32) !important;
+      box-shadow: 0 0 20px rgba(200,241,53,0.12) !important;
+    }
+
+    /* === RF SEGMENT active === */
+    .rf-seg button.sel {
+      box-shadow: 0 0 18px rgba(200,241,53,0.35) !important;
+    }
+
+    /* === ADD LINK (habits/supps) === */
+    .add-link {
+      filter: drop-shadow(0 0 8px rgba(200,241,53,0.5)) !important;
+      transition: filter 0.18s !important;
+    }
+    .add-link:hover { filter: drop-shadow(0 0 16px rgba(200,241,53,0.8)) brightness(1.1) !important; }
+
+    /* === QUICK-ADD + button === */
+    .qa-add:hover {
+      background: rgba(200,241,53,0.22) !important;
+      box-shadow: 0 0 16px rgba(200,241,53,0.25) !important;
+    }
+
+    /* === WEEKLY PLAN done badge === */
+    .week-day-card.done {
+      border-color: rgba(107,227,164,0.4) !important;
+      background: rgba(107,227,164,0.05) !important;
+      box-shadow: 0 0 20px rgba(107,227,164,0.1) !important;
+    }
+
+    /* === FOOD LOG ROW hover === */
+    .food-log-row:hover {
+      background: rgba(255,255,255,0.04) !important;
+      border-color: rgba(200,241,53,0.12) !important;
+    }
+
+    /* === WHOOP LEGEND pill === */
+    .whoop-legend {
+      background: rgba(255,255,255,0.015) !important;
+      border: 1px solid rgba(255,255,255,0.06) !important;
+    }
+
+    /* === SECTION sub headings === */
+    .section-sub {
+      color: rgba(176,174,168,0.75) !important;
+    }
+
+    /* === WHOOP BIO ITEMS === */
+    .whoop-bio-item {
+      background: rgba(255,255,255,0.02) !important;
+      transition: background 0.18s, border-color 0.18s, box-shadow 0.18s !important;
+    }
+    .whoop-bio-item:hover {
+      background: rgba(200,241,53,0.04) !important;
+      border-color: rgba(200,241,53,0.15) !important;
+      box-shadow: 0 0 16px rgba(200,241,53,0.07) !important;
+    }
+
+    /* === CHK-BOX checked neon === */
+    .chk-box.checked {
+      box-shadow: 0 0 12px rgba(200,241,53,0.5) !important;
+    }
+
+    /* === COLLAPSE TOGGLE chev accent === */
+    .collapse-toggle.open .chev { color: var(--accent) !important; }
+
   </style>
 </head>
 <body>
@@ -857,15 +1252,20 @@
 
           <!-- Hero recovery ring -->
           <div class="whoop-ring-wrap" id="whoopRingWrap">
+            <!-- Halo glow behind ring (color set by setRing) -->
+            <div id="ringHaloGlow" style="position:absolute;inset:-40px;border-radius:50%;pointer-events:none;z-index:-1;background:radial-gradient(circle,rgba(200,241,53,0.10) 0%,transparent 65%);transition:background 0.6s;animation:ring-halo-pulse 4s ease-in-out infinite;"></div>
             <div class="whoop-orb-wrap" id="whoopOrbWrap">
               <div class="whoop-orb-line" data-orb-line="0.2"></div>
               <div class="whoop-orb-line" data-orb-line="1.1"></div>
               <div class="whoop-orb-line" data-orb-line="2.0"></div>
+              <div class="whoop-orb-line" data-orb-line="3.0"></div>
             </div>
             <div class="whoop-particle" data-particle="0.3" style="left:2%;top:26%;"></div>
             <div class="whoop-particle" data-particle="1.6" style="right:-1%;top:17%;width:6px;height:6px;"></div>
             <div class="whoop-particle" data-particle="2.6" style="right:3%;bottom:14%;width:4px;height:4px;"></div>
             <div class="whoop-particle" data-particle="3.2" style="left:5%;bottom:12%;"></div>
+            <div class="whoop-particle" data-particle="4.1" style="left:50%;top:-3%;width:4px;height:4px;"></div>
+            <div class="whoop-particle" data-particle="5.3" style="right:8%;top:50%;width:3px;height:3px;"></div>
             <svg class="whoop-ring" viewBox="0 0 220 220" aria-hidden="true">
               <circle class="whoop-ring-track" cx="110" cy="110" r="96"/>
               <circle class="whoop-ring-fill"  cx="110" cy="110" r="96" id="whoopRingFill"/>
@@ -1739,7 +2139,15 @@
       lbl.textContent  = label;
       if (wrap) {
         wrap.style.color  = color; /* div orbs + particles inherit via currentColor */
-        wrap.style.filter = 'drop-shadow(0 0 28px ' + glow.replace('0.55', '0.10') + ')';
+        wrap.style.filter = 'drop-shadow(0 0 36px ' + glow.replace('0.55','0.14') + ')';
+        /* ring fill double-glow */
+        arc.style.filter = 'drop-shadow(0 0 14px ' + glow + ') drop-shadow(0 0 32px ' + glow.replace('0.55','0.22') + ')';
+        /* update score num glow to match zone */
+        const scoreEl = document.getElementById('whoopRecoveryScore');
+        if (scoreEl) scoreEl.style.filter = 'drop-shadow(0 0 22px ' + glow.replace('0.55','0.38') + ')';
+        /* update actual halo div background */
+        const halo = document.getElementById('ringHaloGlow');
+        if (halo) halo.style.background = 'radial-gradient(circle, ' + glow.replace('0.55','0.16') + ' 0%, transparent 65%)';
       }
     }
 
@@ -3863,6 +4271,28 @@
       _authToken = null;
       location.reload();
     });
+
+    /* ── Ambient floating blobs ── */
+    (function() {
+      var blobs = [
+        { w:500, h:500, top:'-8%',  left:'-6%',  color:'rgba(200,241,53,0.05)',  dur:'22s', delay:'0s'   },
+        { w:600, h:600, bottom:'-14%', right:'-8%', color:'rgba(107,227,164,0.04)', dur:'28s', delay:'-9s'  },
+        { w:350, h:350, top:'38%',  right:'2%',  color:'rgba(155,127,232,0.03)', dur:'19s', delay:'-15s' },
+        { w:280, h:280, top:'65%',  left:'-4%',  color:'rgba(200,241,53,0.03)',  dur:'24s', delay:'-5s'  },
+      ];
+      blobs.forEach(function(b) {
+        var el = document.createElement('div');
+        el.className = 'ambient-blob';
+        el.style.cssText = [
+          'width:'+b.w+'px', 'height:'+b.h+'px',
+          b.top    ? 'top:'+b.top       : 'bottom:'+b.bottom,
+          b.left   ? 'left:'+b.left     : 'right:'+b.right,
+          'background:radial-gradient(circle, '+b.color+' 0%, transparent 65%)',
+          '--blob-dur:'+b.dur, '--blob-delay:'+b.delay
+        ].join(';');
+        document.body.appendChild(el);
+      });
+    })();
 
     (async function bootAuth() {
       showLogin(); // lock the app until we know the session
