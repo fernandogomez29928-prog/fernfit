@@ -13,7 +13,7 @@
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -661,6 +661,21 @@
     .rf-impact { margin-top: 10px; padding: 10px 13px; background: rgba(242,192,99,0.07); border: 1px solid rgba(242,192,99,0.22); border-radius: 10px; font-size: 11.5px; color: #F2C063; line-height: 1.5; display: none; }
     .rf-impact.show { display: block; }
 
+    /* ── Omni heading (Coach tab) ── */
+    .omni-heading {
+      font-family: 'Barlow Condensed', 'Hanken Grotesk', sans-serif;
+      font-size: clamp(56px, 16vw, 80px);
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      line-height: 0.9;
+      margin-bottom: 6px;
+      background: linear-gradient(150deg, #ff4040 0%, #c52020 35%, #9d1515 65%, #6b0e0e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 28px rgba(157,21,21,0.55)) drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+    }
     /* ── Omni card (Coach tab) ── */
     .omni-card { display: flex; align-items: flex-start; gap: 12px; padding: 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; margin-bottom: 20px; }
     .omni-avatar { width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #ffffff; font: 800 18px/1 var(--font); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px rgba(200,40,40,0.25); }
@@ -1830,7 +1845,7 @@
    <div class="page" id="page-coach">
 
     <div class="section">
-      <div class="section-title">Omni</div>
+      <div class="omni-heading">OMNI</div>
       <div class="section-sub" style="margin-bottom:20px;">Your coach — knows your recovery, your stack, and your history.</div>
 
       <!-- Omni intro card -->
