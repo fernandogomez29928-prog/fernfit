@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     if (k !== 'path') fwd.set(k, String(v));
   }
   const qs   = fwd.toString();
-  const base = path.startsWith('/cycle')
+  const base = (path.startsWith('/cycle') || path.startsWith('/heart_rate'))
     ? 'https://api.prod.whoop.com/developer/v1'
     : 'https://api.prod.whoop.com/developer/v2';
   const url = base + path + (qs ? '?' + qs : '');
