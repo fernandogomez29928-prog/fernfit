@@ -221,8 +221,9 @@
       stroke-dasharray: 603.19; stroke-dashoffset: 603.19;
       transition: stroke-dashoffset 0.8s cubic-bezier(0.22,1,0.36,1), stroke 0.4s, filter 0.4s;
     }
-    .whoop-orb-line { transform-box: fill-box; transform-origin: center; will-change: transform; }
-    .whoop-particle { will-change: transform; }
+    .whoop-orb-wrap { position: absolute; inset: -8px; pointer-events: none; z-index: 0; }
+    .whoop-orb-line { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; border-radius: 50%; border: 1px solid currentColor; transform: translate(-50%,-50%); will-change: transform, opacity; }
+    .whoop-particle { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; pointer-events: none; z-index: 2; will-change: transform, opacity; }
     .whoop-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
     .whoop-ring-num { font-size: 60px; font-weight: 700; letter-spacing: -0.04em; color: var(--text-primary); line-height: 1; font-variant-numeric: tabular-nums; }
     .whoop-ring-unit { font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-tertiary); margin-top: 10px; }
@@ -657,6 +658,20 @@
     .rf-impact { margin-top: 10px; padding: 10px 13px; background: rgba(242,192,99,0.07); border: 1px solid rgba(242,192,99,0.22); border-radius: 10px; font-size: 11.5px; color: #F2C063; line-height: 1.5; display: none; }
     .rf-impact.show { display: block; }
 
+    /* ── Omni card (Coach tab) ── */
+    .omni-card { display: flex; align-items: flex-start; gap: 12px; padding: 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; margin-bottom: 20px; }
+    .omni-avatar { width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #0a0b07; font: 800 18px/1 var(--font); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px rgba(200,241,53,0.25); }
+    .omni-online { font: 700 10px var(--font-mono); letter-spacing: .06em; color: #6be3a4; margin-top: 3px; }
+    .omni-card-body { flex: 1; min-width: 0; }
+    .omni-card-name { font: 700 14px var(--font); color: var(--text-primary); margin-bottom: 10px; }
+    .omni-card-msg { font: 400 13px/1.6 var(--font); color: var(--text-secondary); }
+
+    /* ── Profile pill buttons ── */
+    .pf-pill-group { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 0; }
+    .pf-pill { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--border-soft); background: rgba(255,255,255,0.03); color: var(--text-secondary); font: 600 12px var(--font); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+    .pf-pill.sel { background: var(--accent); border-color: var(--accent); color: #0a0b07; font-weight: 800; }
+    .pf-pill:hover:not(.sel) { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+
     /* ── Today's nutrition summary chip (Health) ── */
     .today-nutri { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 16px; }
     .tn-cell { background: rgba(255,255,255,0.025); border: 1px solid var(--border-soft); border-radius: 12px; padding: 11px 8px; text-align: center; }
@@ -842,25 +857,18 @@
 
           <!-- Hero recovery ring -->
           <div class="whoop-ring-wrap" id="whoopRingWrap">
+            <div class="whoop-orb-wrap" id="whoopOrbWrap">
+              <div class="whoop-orb-line" data-orb-line="0.2"></div>
+              <div class="whoop-orb-line" data-orb-line="1.1"></div>
+              <div class="whoop-orb-line" data-orb-line="2.0"></div>
+            </div>
+            <div class="whoop-particle" data-particle="0.3" style="left:2%;top:26%;"></div>
+            <div class="whoop-particle" data-particle="1.6" style="right:-1%;top:17%;width:6px;height:6px;"></div>
+            <div class="whoop-particle" data-particle="2.6" style="right:3%;bottom:14%;width:4px;height:4px;"></div>
+            <div class="whoop-particle" data-particle="3.2" style="left:5%;bottom:12%;"></div>
             <svg class="whoop-ring" viewBox="0 0 220 220" aria-hidden="true">
-              <!-- Orbital holo lines -->
-              <ellipse class="whoop-orb-line" data-orb-line cx="110" cy="110" rx="78" ry="10"
-                fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"
-                transform="rotate(-30 110 110)" />
-              <ellipse class="whoop-orb-line" data-orb-line cx="110" cy="110" rx="90" ry="12"
-                fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"
-                transform="rotate(60 110 110)" />
-              <ellipse class="whoop-orb-line" data-orb-line cx="110" cy="110" rx="70" ry="8"
-                fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"
-                transform="rotate(120 110 110)" />
-              <!-- Track and fill -->
               <circle class="whoop-ring-track" cx="110" cy="110" r="96"/>
               <circle class="whoop-ring-fill"  cx="110" cy="110" r="96" id="whoopRingFill"/>
-              <!-- Floating particles -->
-              <circle class="whoop-particle" data-particle cx="110" cy="14" r="3" fill="rgba(200,241,53,0.6)" />
-              <circle class="whoop-particle" data-particle cx="206" cy="110" r="2.5" fill="rgba(200,241,53,0.4)" />
-              <circle class="whoop-particle" data-particle cx="110" cy="206" r="2" fill="rgba(200,241,53,0.5)" />
-              <circle class="whoop-particle" data-particle cx="14" cy="110" r="2.5" fill="rgba(200,241,53,0.4)" />
             </svg>
             <div class="whoop-ring-center">
               <div id="whoopRecoveryScore" class="whoop-ring-num">—</div>
@@ -1302,8 +1310,8 @@
    <!-- ===================== FOOD TAB ===================== -->
    <div class="page" id="page-food">
     <div class="section">
-      <div class="section-title">Food</div>
-      <div class="section-sub">Snap a meal — I'll estimate the calories &amp; macros. Tweak anything, then log it.</div>
+      <div class="section-title">Nutrition</div>
+      <div class="section-sub" style="margin-bottom:20px;">Snap a meal — Omni estimates the calories &amp; macros. Tweak anything, then log it.</div>
 
       <!-- Macro hero -->
       <div class="panel" style="margin-bottom:16px">
@@ -1348,21 +1356,26 @@
       </div>
 
       <!-- Capture CTAs -->
-      <div class="food-cta">
-        <button class="btn btn-primary" id="snapMealBtn" type="button">📸 Snap a meal</button>
-        <button class="btn btn-ghost" id="uploadMealBtn" type="button">🖼️ Upload photo</button>
+      <div style="margin:14px 0 6px;">
+        <button id="snapMealBtn" type="button" style="width:100%;padding:16px;border-radius:16px;border:1.5px dashed rgba(200,241,53,0.45);background:rgba(200,241,53,0.06);color:var(--accent);font:700 13.5px var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background 0.15s,border-color 0.15s;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="4"/><path d="M5 7H3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2l-2-3H9L7 7z"/></svg>
+          Snap a meal
+        </button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <button class="btn btn-ghost" id="uploadMealBtn" type="button" style="flex:1;font-size:13px;">Upload photo</button>
+        <button class="btn btn-ghost btn-block" id="describeMealBtn" type="button" style="flex:1;font-size:13px;margin:0;">Describe meal</button>
       </div>
       <!-- "Add context" row: appears after a photo is selected, before analysis -->
       <div id="photoContextRow" style="display:none;margin-bottom:8px">
         <input id="photoContextInput" placeholder="Anything to add? (e.g. &quot;grilled not fried&quot;, &quot;ranch on the side&quot;)" style="font-size:13px" />
         <button class="btn btn-primary btn-block" id="analyzeWithContextBtn" type="button" style="margin-top:8px">Analyze →</button>
       </div>
-      <button class="btn btn-ghost btn-block" id="describeMealBtn" type="button" style="margin-bottom:6px">✍️ Describe it instead</button>
       <input type="file" id="foodCameraInput" accept="image/*" capture="environment" />
       <input type="file" id="foodPhotoInput" accept="image/*" />
 
       <!-- Describe row -->
-      <div id="describeRow" style="display:none;margin-top:10px">
+      <div id="describeRow" style="display:none;margin-top:10px;">
         <textarea id="describeInput" placeholder="e.g. 2 eggs, 3 strips of bacon, sourdough toast with butter"></textarea>
         <button class="btn btn-primary btn-block" id="describeGoBtn" type="button" style="margin-top:8px">Estimate</button>
       </div>
@@ -1408,6 +1421,19 @@
 
     <div class="section">
       <div class="section-title">Omni</div>
+      <div class="section-sub" style="margin-bottom:20px;">Your coach — knows your recovery, your stack, and your history.</div>
+
+      <!-- Omni intro card -->
+      <div class="omni-card">
+        <span class="omni-avatar">O</span>
+        <div class="omni-card-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span class="omni-card-name">Omni</span>
+            <span class="omni-online">● ONLINE</span>
+          </div>
+          <div class="omni-card-msg" id="omniIntroMsg">Ask me anything — today's plan, what to eat, how to recover faster, or what your body needs right now.</div>
+        </div>
+      </div>
 
       <!-- Daily briefing -->
       <div class="eyebrow">Today's Briefing</div>
@@ -1418,17 +1444,17 @@
       </div>
 
       <!-- Quick actions -->
-      <div class="eyebrow">Ask the Coach</div>
+      <div class="eyebrow">Ask Omni</div>
       <div class="coach-actions">
-        <button class="btn btn-ghost" data-coach="meal" type="button">🍽️ Meal plan</button>
-        <button class="btn btn-ghost" data-coach="recipe" type="button">🥗 Recipe ideas</button>
-        <button class="btn btn-ghost" data-coach="workout" type="button">🏋️ Workout plan</button>
-        <button class="btn btn-ghost" data-coach="grocery" type="button">🛒 Shopping list</button>
-        <button class="btn btn-ghost" id="refreshBriefingBtn" type="button">🔄 New briefing</button>
-        <button class="btn btn-ghost" id="weeklyPlanBtn" type="button">📅 Weekly split</button>
-        <button class="btn btn-ghost" id="trainingLogBtn" type="button">💪 Log lifts</button>
-        <button class="btn btn-ghost" data-coach="digest" type="button">📊 Weekly digest</button>
-        <button class="btn btn-ghost" data-coach="set_goals" type="button">🎯 Set my goals</button>
+        <button class="btn btn-ghost" data-coach="meal" type="button">Meal plan</button>
+        <button class="btn btn-ghost" data-coach="recipe" type="button">Recipe ideas</button>
+        <button class="btn btn-ghost" data-coach="workout" type="button">Workout plan</button>
+        <button class="btn btn-ghost" data-coach="grocery" type="button">Shopping list</button>
+        <button class="btn btn-ghost" id="refreshBriefingBtn" type="button">New briefing</button>
+        <button class="btn btn-ghost" id="weeklyPlanBtn" type="button">Weekly split</button>
+        <button class="btn btn-ghost" id="trainingLogBtn" type="button">Log lifts</button>
+        <button class="btn btn-ghost" data-coach="digest" type="button">Weekly digest</button>
+        <button class="btn btn-ghost" data-coach="set_goals" type="button">Set my goals</button>
       </div>
 
       <!-- Weekly workout plan -->
@@ -1458,10 +1484,11 @@
 
       <!-- Coach memory -->
       <div class="panel" id="memoryPanel" style="margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="eyebrow" style="margin:0">📌 Coach remembers</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div class="eyebrow" style="margin:0;font-size:11px;letter-spacing:0.14em;">OMNI REMEMBERS</div>
           <button class="add-link" id="addMemoryBtn" type="button">+ Pin a fact</button>
         </div>
+        <div style="font-size:12px;color:var(--text-quaternary);margin-bottom:10px;line-height:1.5;">Facts Omni keeps in mind in every reply — work conflicts, diet issues, allergies, injuries.</div>
         <div class="mem-list" id="memList"><span style="font-size:12px;color:var(--text-quaternary)">Pin facts the coach should never forget — PRs, preferences, goals.</span></div>
       </div>
 
@@ -1498,14 +1525,23 @@
 
     <div class="section">
       <div class="section-title">Profile</div>
+      <div class="section-sub" style="margin-bottom:20px;">Everything your coach reasons from.</div>
+
       <div class="panel">
+        <!-- Basics -->
+        <div class="eyebrow" style="margin-bottom:12px;">Basics</div>
         <div class="field-row">
           <div class="field"><label class="field-label">Name</label><input id="pfName" type="text" placeholder="Fernando" /></div>
           <div class="field"><label class="field-label">Age</label><input id="pfAge" type="number" inputmode="numeric" placeholder="—" /></div>
         </div>
         <div class="field-row">
           <div class="field"><label class="field-label">Sex</label>
-            <select id="pfSex"><option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+            <input type="hidden" id="pfSex" />
+            <div class="pf-pill-group" id="pfSexPills">
+              <button class="pf-pill" data-val="male" type="button">Male</button>
+              <button class="pf-pill" data-val="female" type="button">Female</button>
+              <button class="pf-pill" data-val="other" type="button">Other</button>
+            </div>
           </div>
           <div class="field"><label class="field-label">Height</label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1514,27 +1550,55 @@
             </div>
           </div>
         </div>
+
+        <!-- Body -->
+        <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Body</div>
         <div class="field-row">
           <div class="field"><label class="field-label">Current weight (lbs)</label><input id="pfWeight" type="number" step="0.1" inputmode="decimal" placeholder="—" /></div>
           <div class="field"><label class="field-label">Goal weight (lbs)</label><input id="pfGoalWeight" type="number" step="0.1" inputmode="decimal" placeholder="—" /></div>
         </div>
-        <div class="field-row">
-          <div class="field"><label class="field-label">Primary goal</label>
-            <select id="pfGoal"><option value="">—</option><option value="muscle">Build muscle</option><option value="fatloss">Lose fat</option><option value="recomp">Recomp</option><option value="performance">Performance</option></select>
-          </div>
-          <div class="field"><label class="field-label">Dietary style</label>
-            <select id="pfDiet"><option value="">None</option><option value="vegetarian">Vegetarian</option><option value="vegan">Vegan</option><option value="pescatarian">Pescatarian</option><option value="keto">Keto</option></select>
-          </div>
+
+        <!-- Primary Goal -->
+        <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Primary Goal</div>
+        <input type="hidden" id="pfGoal" />
+        <div class="pf-pill-group" id="pfGoalPills">
+          <button class="pf-pill" data-val="muscle" type="button">Build muscle</button>
+          <button class="pf-pill" data-val="fatloss" type="button">Lose fat</button>
+          <button class="pf-pill" data-val="recomp" type="button">Recomp</button>
+          <button class="pf-pill" data-val="performance" type="button">Performance</button>
         </div>
+
+        <!-- Diet -->
+        <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Diet</div>
+        <input type="hidden" id="pfDiet" />
+        <div class="pf-pill-group" id="pfDietPills">
+          <button class="pf-pill" data-val="" type="button">None</button>
+          <button class="pf-pill" data-val="vegetarian" type="button">Vegetarian</button>
+          <button class="pf-pill" data-val="vegan" type="button">Vegan</button>
+          <button class="pf-pill" data-val="pescatarian" type="button">Pescatarian</button>
+          <button class="pf-pill" data-val="keto" type="button">Keto</button>
+        </div>
+
+        <!-- Daily Targets -->
+        <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Daily Targets</div>
         <div class="field-row">
           <div class="field"><label class="field-label">Calorie goal</label><input id="pfCal" type="number" inputmode="numeric" placeholder="auto" /></div>
           <div class="field"><label class="field-label">Protein goal (g)</label><input id="pfProtein" type="number" inputmode="numeric" placeholder="auto" /></div>
         </div>
-        <div class="field"><label class="field-label">Current supplement stack</label><textarea id="pfSupps" placeholder="Creatine 5g, Vitamin D 5000IU, Omega-3…"></textarea></div>
-        <div class="field"><label class="field-label">Peptides</label><textarea id="pfPeptides" placeholder="e.g. BPC-157 250mcg AM, TB-500…"></textarea></div>
-        <div class="field"><label class="field-label">Injuries / limitations</label><textarea id="pfInjuries" placeholder="Anything to train around…"></textarea></div>
 
-        <button class="btn btn-primary btn-block" id="saveProfileBtn" type="button">Save profile</button>
+        <!-- Stack -->
+        <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Supplement Stack</div>
+        <div class="field"><textarea id="pfSupps" placeholder="Creatine 5g, Vitamin D 5000IU, Omega-3…"></textarea></div>
+
+        <!-- Peptides -->
+        <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Peptides</div>
+        <div class="field"><textarea id="pfPeptides" placeholder="e.g. BPC-157 250mcg AM, TB-500…"></textarea></div>
+
+        <!-- Injuries -->
+        <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Injuries &amp; Limitations</div>
+        <div class="field"><textarea id="pfInjuries" placeholder="Anything to train around…" style="border-color:rgba(242,192,99,0.2);background:rgba(242,192,99,0.03);"></textarea></div>
+
+        <button class="btn btn-primary btn-block" id="saveProfileBtn" type="button" style="margin-top:20px;">Save profile</button>
         <div class="save-hint" id="profileHint"></div>
 
         <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -1635,35 +1699,32 @@
     }
 
     /* ── Holographic ring rAF loop ── */
+    var _holoH0 = null;
     function startHolo() {
-      const wrap = document.getElementById('whoopRingWrap');
-      if (!wrap || wrap._holoRunning) return;
-      wrap._holoRunning = true;
-      const orbs = wrap.querySelectorAll('[data-orb-line]');
-      const ptcls = wrap.querySelectorAll('[data-particle]');
-      const orbAngles = [-30, 60, 120];
-      let t = 0;
-      (function frame() {
-        t += 0.008;
-        orbs.forEach(function(orb, i) {
-          const s = 1 + 0.032 * Math.sin(t * 1.3 + i * 2.094);
-          const angle = orbAngles[i];
-          orb.style.transform = 'rotate(' + angle + 'deg) scaleX(' + s.toFixed(4) + ')';
+      if (_holoH0 !== null) return;
+      _holoH0 = performance.now();
+      (function tick() {
+        var t = (performance.now() - _holoH0) / 1000;
+        document.querySelectorAll('[data-orb-line]').forEach(function(el) {
+          var ph = parseFloat(el.getAttribute('data-orb-line')) || 0;
+          var sx = Math.cos(t * 1.05 + ph);
+          el.style.transform = 'translate(-50%,-50%) scaleX(' + sx.toFixed(3) + ')';
+          el.style.opacity = (0.16 + 0.5 * Math.abs(sx)).toFixed(2);
         });
-        ptcls.forEach(function(p, i) {
-          const angle = t * 0.55 + i * (Math.PI / 2);
-          const r = 96 + 9 * Math.sin(t * 1.1 + i * 1.3);
-          p.setAttribute('cx', (110 + r * Math.cos(angle)).toFixed(1));
-          p.setAttribute('cy', (110 + r * Math.sin(angle)).toFixed(1));
+        document.querySelectorAll('[data-particle]').forEach(function(el) {
+          var ph = parseFloat(el.getAttribute('data-particle')) || 0;
+          el.style.transform = 'translateY(' + (Math.sin(t * 0.8 + ph) * 11).toFixed(1) + 'px)';
+          el.style.opacity = (0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t * 0.8 + ph + 1))).toFixed(2);
         });
-        requestAnimationFrame(frame);
+        requestAnimationFrame(tick);
       })();
     }
 
     /* ── Ring animation (5-tier) ── */
     function setRing(score) {
-      const arc = document.getElementById('whoopRingFill');
-      const lbl = document.getElementById('whoopRecoveryLabel');
+      const arc  = document.getElementById('whoopRingFill');
+      const lbl  = document.getElementById('whoopRecoveryLabel');
+      const wrap = document.getElementById('whoopRingWrap');
       if (!arc) return;
       arc.style.strokeDashoffset = CIRC * (1 - score / 100);
       let color, glow, label;
@@ -1672,12 +1733,14 @@
       else if (score >= 45) { color = '#F2D63A'; glow = 'rgba(242,214,58,0.55)';   label = 'Fair Recovery'; }
       else if (score >= 30) { color = '#F2962F'; glow = 'rgba(242,150,47,0.55)';   label = 'Low Recovery'; }
       else                  { color = '#FF2020'; glow = 'rgba(255,32,32,0.55)';     label = 'Poor Recovery'; }
-      arc.style.stroke  = color;
-      arc.style.filter  = `drop-shadow(0 0 10px ${glow})`;
-      lbl.style.color   = color;
-      lbl.textContent   = label;
-      const wrap = document.getElementById('whoopRingWrap');
-      if (wrap) wrap.style.filter = `drop-shadow(0 0 28px ${glow.replace('0.55', '0.10')})`;
+      arc.style.stroke = color;
+      arc.style.filter = 'drop-shadow(0 0 10px ' + glow + ')';
+      lbl.style.color  = color;
+      lbl.textContent  = label;
+      if (wrap) {
+        wrap.style.color  = color; /* div orbs + particles inherit via currentColor */
+        wrap.style.filter = 'drop-shadow(0 0 28px ' + glow.replace('0.55', '0.10') + ')';
+      }
     }
 
     /* ── Verdict ── */
@@ -2442,6 +2505,26 @@
        PROFILE
     ============================================================ */
     const PF = { pfName:'name', pfAge:'age', pfSex:'sex', pfGoal:'primary_goal', pfDiet:'dietary_style', pfCal:'calorie_goal', pfProtein:'protein_goal', pfSupps:'supplements', pfPeptides:'peptides', pfInjuries:'injuries' };
+
+    function syncPills(groupId, val) {
+      const group = $(groupId);
+      if (!group) return;
+      group.querySelectorAll('.pf-pill').forEach(function(btn) {
+        btn.classList.toggle('sel', btn.getAttribute('data-val') === (val || ''));
+      });
+    }
+
+    function initPillGroup(groupId, inputId) {
+      const group = $(groupId);
+      if (!group) return;
+      group.querySelectorAll('.pf-pill').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          $(inputId).value = btn.getAttribute('data-val');
+          syncPills(groupId, btn.getAttribute('data-val'));
+        });
+      });
+    }
+
     function fillProfile(p) {
       if (!p) return;
       for (const [el, key] of Object.entries(PF)) { if (p[key] != null) $(el).value = p[key]; }
@@ -2450,8 +2533,15 @@
       if (p.height_cm != null) { const h = cmToFtIn(p.height_cm); $('pfHeightFt').value = h.ft; $('pfHeightIn').value = h.in; }
       if (p.calorie_goal) { const el = $('goalCalInput'); if (el) el.value = p.calorie_goal; }
       if (p.protein_goal) { const el = $('goalProtInput'); if (el) el.value = p.protein_goal; }
+      syncPills('pfSexPills', p.sex || '');
+      syncPills('pfGoalPills', p.primary_goal || '');
+      syncPills('pfDietPills', p.dietary_style || '');
       cachedProfile = p;
     }
+
+    initPillGroup('pfSexPills', 'pfSex');
+    initPillGroup('pfGoalPills', 'pfGoal');
+    initPillGroup('pfDietPills', 'pfDiet');
     async function loadProfile() {
       try { const { profile } = await apiGet('/api/profile'); fillProfile(profile); }
       catch (e) { fillProfile(lsGet('fernfit_profile', null)); }
