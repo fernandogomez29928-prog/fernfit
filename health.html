@@ -59,6 +59,10 @@
     .auth-error { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: #FF8A8A; font-size: 12.5px; padding: 9px 12px; border-radius: 10px; line-height: 1.45; }
     .auth-toggle { display: flex; gap: 6px; justify-content: center; font-size: 12.5px; color: var(--text-tertiary); margin-top: 6px; }
     .auth-toggle button { background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer; font-family: inherit; font-size: 12.5px; padding: 0; }
+    .auth-demo-divider { display: flex; align-items: center; gap: 10px; color: var(--text-quaternary); font-size: 11px; margin: 4px 0; }
+    .auth-demo-divider::before, .auth-demo-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+    .btn-demo { width: 100%; padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius); color: var(--text-secondary); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.15s, border-color 0.15s; letter-spacing: 0.01em; }
+    .btn-demo:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); color: var(--text-primary); }
     body.locked nav, body.locked main { display: none !important; }
 
     /* ── Nav — desktop (top bar) ── */
@@ -1261,6 +1265,8 @@
       <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password" />
       <input id="authCode" type="text" placeholder="Access code" style="display:none" />
       <button class="btn btn-primary btn-block" id="authSubmit" type="button">Log in</button>
+      <div class="auth-demo-divider">or</div>
+      <button class="btn-demo" id="authDemoBtn" type="button">Try the demo →</button>
       <div class="auth-toggle">
         <span id="authToggleText">New here?</span>
         <button id="authToggleBtn" type="button">Create an account</button>
@@ -4544,44 +4550,52 @@
     }
 
     // ── Barcode scanner ───────────────────────────────────────────
-    let _barcodeStream = null, _barcodeRAF = null, _barcodeDetector = null;
+    let _barcodeStream = null, _barcodeRAF = null, _barcodeReader = null;
+    const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js';
 
-    async function detectBarcodeFromImage(imgOrVideo) {
-      if (!_barcodeDetector && 'BarcodeDetector' in window) {
-        _barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','data_matrix'] });
-      }
-      if (!_barcodeDetector) return null;
-      try {
-        const results = await _barcodeDetector.detect(imgOrVideo);
-        return results.length ? results[0].rawValue : null;
-      } catch { return null; }
+    async function loadZXing() {
+      if (window.ZXing) return true;
+      return new Promise((resolve) => {
+        const s = document.createElement('script');
+        s.src = ZXING_CDN;
+        s.onload = () => resolve(true);
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      });
     }
 
     async function startBarcodeScanner() {
-      if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
-        // Fallback: capture a photo and try static detection
+      if (!navigator.mediaDevices?.getUserMedia) {
         $('barcodeFallbackInput').click(); return;
       }
       const modal = $('barcodeModal'); modal.classList.add('open');
       const video = $('barcodeVideo');
+
+      const loaded = await loadZXing();
+      if (!loaded) { closeBarcodeScanner(); $('barcodeFallbackInput').click(); return; }
+
       try {
-        _barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
-        video.srcObject = _barcodeStream;
-        await video.play();
-        const scan = async () => {
-          const barcode = await detectBarcodeFromImage(video);
-          if (barcode) { closeBarcodeScanner(); handleBarcodeFound(barcode); return; }
-          _barcodeRAF = requestAnimationFrame(scan);
-        };
-        _barcodeRAF = requestAnimationFrame(scan);
+        _barcodeReader = new window.ZXing.BrowserMultiFormatReader();
+        // decodeFromConstraints handles camera setup + continuous scanning on iOS
+        await _barcodeReader.decodeFromConstraints(
+          { video: { facingMode: 'environment' } },
+          video,
+          (result, err) => {
+            if (result) {
+              const code = result.getText();
+              closeBarcodeScanner();
+              handleBarcodeFound(code);
+            }
+          }
+        );
       } catch (e) {
         closeBarcodeScanner();
-        // Camera permission denied — fall back to static photo
         $('barcodeFallbackInput').click();
       }
     }
 
     function closeBarcodeScanner() {
+      if (_barcodeReader) { try { _barcodeReader.reset(); } catch {} _barcodeReader = null; }
       cancelAnimationFrame(_barcodeRAF); _barcodeRAF = null;
       if (_barcodeStream) { _barcodeStream.getTracks().forEach(t => t.stop()); _barcodeStream = null; }
       const modal = $('barcodeModal'); if (modal) modal.classList.remove('open');
@@ -4664,7 +4678,26 @@
         const url = URL.createObjectURL(file);
         img.onload = async () => {
           URL.revokeObjectURL(url);
-          const barcode = await detectBarcodeFromImage(img);
+          let barcode = null;
+          // Try native BarcodeDetector (Chrome/Android) first — fast
+          if ('BarcodeDetector' in window) {
+            try {
+              const det = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+              const res = await det.detect(img);
+              if (res.length) barcode = res[0].rawValue;
+            } catch {}
+          }
+          // Fall back to ZXing (iOS Safari + everything else)
+          if (!barcode) {
+            const ok = await loadZXing();
+            if (ok) {
+              try {
+                const reader = new window.ZXing.BrowserMultiFormatReader();
+                const result = await reader.decodeFromImageElement(img);
+                barcode = result?.getText() || null;
+              } catch {}
+            }
+          }
           if (barcode) { await handleBarcodeFound(barcode); }
           else { showEstimate({ items: [], totals: {}, confidence: 'low', note: 'No barcode detected — try Snap a meal or Describe instead.' }, null, null); $('foodEstimate').classList.add('open'); }
         };
@@ -5025,7 +5058,19 @@
       $('authGate').style.display = 'none';
       document.body.classList.remove('locked');
       runApp();
-      if (supa) supa.auth.getUser().then(({ data }) => { const em = data?.user?.email; if (em) setText('accountEmail', em); }).catch(() => {});
+      if (supa) supa.auth.getUser().then(({ data }) => {
+        const em = data?.user?.email;
+        if (em) setText('accountEmail', em);
+        if (em === 'demo@fernfit.app') showDemoBanner();
+      }).catch(() => {});
+    }
+    function showDemoBanner() {
+      if ($('demoBanner')) return;
+      const b = document.createElement('div');
+      b.id = 'demoBanner';
+      b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:rgba(200,40,40,0.12);border-bottom:1px solid rgba(200,40,40,0.25);color:rgba(255,180,160,0.9);font-size:11.5px;font-weight:600;text-align:center;padding:6px 16px;letter-spacing:0.03em;';
+      b.textContent = 'DEMO — data may reset periodically';
+      document.body.prepend(b);
     }
     function showLogin() {
       document.body.classList.add('locked');
@@ -5065,6 +5110,15 @@
       }
       submit.addEventListener('click', go);
       [emailEl, passEl, codeEl].forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); }));
+
+      const DEMO_EMAIL = 'demo@fernfit.app';
+      const DEMO_PASS  = 'fernfit-demo-2024';
+      $('authDemoBtn')?.addEventListener('click', () => {
+        setMode(false);
+        emailEl.value = DEMO_EMAIL;
+        passEl.value  = DEMO_PASS;
+        go();
+      });
     })();
 
     $('logoutBtn')?.addEventListener('click', async () => {
