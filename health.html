@@ -649,6 +649,19 @@
     .food-edit-cell label { display: block; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 4px; text-align: center; }
     .food-edit-cell input { text-align: center; padding: 8px 4px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .food-note { font-size: 11.5px; color: var(--text-tertiary); line-height: 1.5; margin-top: 4px; }
+    /* Barcode scanner modal */
+    #barcodeModal { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.97); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    #barcodeModal.open { display: flex; }
+    #barcodeVideo { width: 100%; max-width: 380px; border-radius: 14px; aspect-ratio: 4/3; object-fit: cover; background: #111; }
+    .barcode-frame { position: absolute; inset: 0; pointer-events: none; }
+    .barcode-frame::before, .barcode-frame::after { content: ''; position: absolute; width: 48px; height: 48px; border-color: var(--accent); border-style: solid; border-radius: 4px; }
+    .barcode-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
+    .barcode-frame::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+    .barcode-corners-tr, .barcode-corners-bl { position: absolute; width: 48px; height: 48px; border-color: var(--accent); border-style: solid; border-radius: 4px; }
+    .barcode-corners-tr { top: 0; right: 0; border-width: 3px 3px 0 0; }
+    .barcode-corners-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+    .barcode-scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: scanLine 2s ease-in-out infinite; }
+    @keyframes scanLine { 0%,100% { top: 20%; opacity: 0.4; } 50% { top: 80%; opacity: 1; } }
     .food-items-list { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 8px 0; }
     .food-items-list .fi { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border-soft); }
     .fi-name { font-size: 12px; color: var(--text-secondary); }
@@ -1880,6 +1893,10 @@
       <div style="display:flex;gap:8px;margin-bottom:6px;">
         <button class="btn btn-ghost" id="uploadMealBtn" type="button" style="flex:1;font-size:13px;">Upload photo</button>
         <button class="btn btn-ghost btn-block" id="describeMealBtn" type="button" style="flex:1;font-size:13px;margin:0;">Describe meal</button>
+        <button class="btn btn-ghost" id="scanBarcodeBtn" type="button" style="flex:1;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h3M3 5v3M3 5"/><path d="M21 5h-3M21 5v3"/><path d="M3 19h3M3 19v-3"/><path d="M21 19h-3M21 19v-3"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="13" y1="8" x2="13" y2="11"/><line x1="16" y1="8" x2="16" y2="16"/><line x1="13" y1="14" x2="13" y2="16"/></svg>
+          Barcode
+        </button>
       </div>
       <!-- photo context row hidden but kept for programmatic use -->
       <div id="photoContextRow" style="display:none"><input id="photoContextInput" /><button id="analyzeWithContextBtn" style="display:none"></button></div>
@@ -4473,6 +4490,91 @@
       reader.readAsDataURL(file);
       input.value = '';
     }
+
+    // ── Barcode scanner ───────────────────────────────────────────
+    let _barcodeStream = null, _barcodeRAF = null, _barcodeDetector = null;
+
+    async function detectBarcodeFromImage(imgOrVideo) {
+      if (!_barcodeDetector && 'BarcodeDetector' in window) {
+        _barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','data_matrix'] });
+      }
+      if (!_barcodeDetector) return null;
+      try {
+        const results = await _barcodeDetector.detect(imgOrVideo);
+        return results.length ? results[0].rawValue : null;
+      } catch { return null; }
+    }
+
+    async function startBarcodeScanner() {
+      if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
+        // Fallback: capture a photo and try static detection
+        $('barcodeFallbackInput').click(); return;
+      }
+      const modal = $('barcodeModal'); modal.classList.add('open');
+      const video = $('barcodeVideo');
+      try {
+        _barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
+        video.srcObject = _barcodeStream;
+        await video.play();
+        const scan = async () => {
+          const barcode = await detectBarcodeFromImage(video);
+          if (barcode) { closeBarcodeScanner(); handleBarcodeFound(barcode); return; }
+          _barcodeRAF = requestAnimationFrame(scan);
+        };
+        _barcodeRAF = requestAnimationFrame(scan);
+      } catch (e) {
+        closeBarcodeScanner();
+        // Camera permission denied — fall back to static photo
+        $('barcodeFallbackInput').click();
+      }
+    }
+
+    function closeBarcodeScanner() {
+      cancelAnimationFrame(_barcodeRAF); _barcodeRAF = null;
+      if (_barcodeStream) { _barcodeStream.getTracks().forEach(t => t.stop()); _barcodeStream = null; }
+      const modal = $('barcodeModal'); if (modal) modal.classList.remove('open');
+    }
+
+    async function handleBarcodeFound(barcode) {
+      haptic([30, 60]);
+      $('foodEstimate').classList.add('open');
+      $('foodLoading').style.display = 'flex';
+      $('foodEstimateInner').style.display = 'none';
+      $('foodEstimate').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      try {
+        const data = await lookupBarcode(barcode);
+        if (!data) throw new Error(`Barcode ${barcode} not in database — try Describe instead`);
+        showEstimate(data, null, null);
+      } catch (e) {
+        showEstimate({ items: [], totals: {}, confidence: 'low', note: e.message }, null, null);
+      }
+    }
+
+    async function lookupBarcode(barcode) {
+      const r = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`);
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (!d.product) return null;
+      const p = d.product;
+      const n = p.nutriments || {};
+      const servingG = parseFloat(p.serving_quantity) || 100;
+      const mult = servingG / 100;
+      const kcal  = Math.round((n['energy-kcal_100g'] ?? (n['energy_100g'] ?? 0) / 4.184) * mult);
+      const prot  = Math.round((n.proteins_100g ?? 0) * mult);
+      const carbs = Math.round((n.carbohydrates_100g ?? 0) * mult);
+      const fat   = Math.round((n.fat_100g ?? 0) * mult);
+      const name  = p.product_name_en || p.product_name || 'Unknown product';
+      const brand = p.brands ? p.brands.split(',')[0].trim() : '';
+      const label = brand ? `${name} — ${brand}` : name;
+      const serving = p.serving_size || `${servingG}g`;
+      return {
+        items: [{ name: label, qty: serving, calories: kcal, protein: prot, carbs, fat }],
+        totals: { calories: kcal, protein: prot, carbs, fat },
+        confidence: 'high',
+        note: `Barcode ${barcode} · per serving (${serving})`,
+      };
+    }
+
     (function setupFood() {
       /* ── Inline goal editor ── */
       $('saveGoalsBtn').addEventListener('click', async () => {
@@ -4500,6 +4602,22 @@
       $('foodPhotoInput').addEventListener('change', () => handleFoodFile($('foodPhotoInput')));
       $('describeMealBtn').addEventListener('click', () => { const r = $('describeRow'); r.style.display = r.style.display === 'none' ? 'block' : 'none'; if (r.style.display === 'block') { r.scrollIntoView({ behavior: 'smooth', block: 'center' }); $('describeInput').focus(); } });
       $('describeGoBtn').addEventListener('click', () => { const txt = $('describeInput').value.trim(); if (!txt) return; analyzeFood({ text: txt }); $('describeInput').value = ''; $('describeRow').style.display = 'none'; });
+      // ── Barcode scanner ──────────────────────────────────────────
+      $('scanBarcodeBtn').addEventListener('click', startBarcodeScanner);
+      $('barcodeCloseBtn').addEventListener('click', closeBarcodeScanner);
+      $('barcodeFallbackInput').addEventListener('change', async () => {
+        const file = $('barcodeFallbackInput').files[0]; if (!file) return;
+        $('barcodeFallbackInput').value = '';
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = async () => {
+          URL.revokeObjectURL(url);
+          const barcode = await detectBarcodeFromImage(img);
+          if (barcode) { await handleBarcodeFound(barcode); }
+          else { showEstimate({ items: [], totals: {}, confidence: 'low', note: 'No barcode detected — try Snap a meal or Describe instead.' }, null, null); $('foodEstimate').classList.add('open'); }
+        };
+        img.src = url;
+      });
       $('foodDiscard').addEventListener('click', () => { $('foodEstimate').classList.remove('open'); });
       $('foodLogBtn').addEventListener('click', () => {
         haptic([30, 50, 30]);
@@ -4949,6 +5067,21 @@
     })();
   })();
   </script>
+
+  <!-- Barcode scanner modal -->
+  <div id="barcodeModal">
+    <div style="position:relative;width:100%;max-width:380px;">
+      <video id="barcodeVideo" autoplay playsinline muted></video>
+      <div class="barcode-frame">
+        <div class="barcode-corners-tr"></div>
+        <div class="barcode-corners-bl"></div>
+        <div class="barcode-scan-line"></div>
+      </div>
+    </div>
+    <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:20px;text-align:center;">Point camera at barcode</p>
+    <button id="barcodeCloseBtn" class="btn btn-ghost" style="margin-top:16px;color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Cancel</button>
+    <input type="file" id="barcodeFallbackInput" accept="image/*" capture="environment" style="display:none" />
+  </div>
 
 </body>
 </html>
