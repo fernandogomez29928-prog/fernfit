@@ -3157,12 +3157,39 @@
     // 'talk'  = mic fills input, user sends manually, no TTS back
     // 'voice' = mic + auto-sends after speaking, Omni talks back (TTS)
     let chatMode = lsGet('fernfit_chat_mode', 'type');
-    let _currentAudio = null;
+    let _currentAudio = null, _ttsQueue = [], _ttsPlaying = false;
+
     function stopSpeaking() {
+      _ttsQueue = [];
+      _ttsPlaying = false;
       if (_currentAudio) { _currentAudio.pause(); _currentAudio.src = ''; _currentAudio = null; }
       const dot = $('voiceSpeakingDot');
       if (dot) dot.style.display = 'none';
       _speaking = false;
+    }
+
+    async function _ttsPlayNext() {
+      if (!_ttsQueue.length) { _ttsPlaying = false; _speaking = false; const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'none'; return; }
+      _ttsPlaying = true; _speaking = true;
+      const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'flex';
+      const blob = await _ttsQueue.shift();
+      if (!blob || chatMode !== 'voice') { _ttsPlayNext(); return; }
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      _currentAudio = audio;
+      audio.onended = audio.onerror = () => { URL.revokeObjectURL(url); _currentAudio = null; _ttsPlayNext(); };
+      audio.play().catch(() => _ttsPlayNext());
+    }
+
+    function ttsEnqueue(sentence) {
+      if (chatMode !== 'voice' || !sentence.trim()) return;
+      const p = fetch('/api/tts', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ text: sentence.trim().slice(0, 400), voice: 'fable', speed: 1.15 }),
+      }).then(r => r.ok ? r.blob() : null).catch(() => null);
+      _ttsQueue.push(p);
+      if (!_ttsPlaying) _ttsPlayNext();
     }
     function applyChatMode(mode) {
       chatMode = mode;
@@ -3192,7 +3219,7 @@
         const r = await fetch('/api/tts', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ text: spoken, voice: 'echo', speed: 1.15 }),
+          body: JSON.stringify({ text: spoken, voice: 'fable', speed: 1.15 }),
         });
         if (!r.ok) throw new Error('TTS request failed: ' + r.status);
         const blob = await r.blob();
@@ -3284,7 +3311,7 @@
       mdDiv.appendChild(cursor);
       const reader = r.body.getReader();
       const decoder = new TextDecoder();
-      let buf = '';
+      let buf = '', ttsBuf = '';
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -3299,11 +3326,25 @@
             try {
               const ev = JSON.parse(data);
               if (ev.error) { cursor.remove(); mdDiv.innerHTML = '<span style="color:var(--danger)">' + esc(ev.error) + '</span>'; return; }
-              if (ev.text) { fullText += ev.text; cursor.remove(); mdDiv.textContent = fullText; mdDiv.appendChild(cursor); $('chatLog').scrollTop = $('chatLog').scrollHeight; }
+              if (ev.text) {
+                fullText += ev.text;
+                ttsBuf += ev.text;
+                // Fire TTS for each complete sentence as it arrives
+                let m;
+                while ((m = ttsBuf.match(/^(.*?[.!?])\s+/s)) !== null) {
+                  ttsEnqueue(m[1]);
+                  ttsBuf = ttsBuf.slice(m[0].length);
+                }
+                cursor.remove(); mdDiv.textContent = fullText; mdDiv.appendChild(cursor);
+                $('chatLog').scrollTop = $('chatLog').scrollHeight;
+              }
             } catch {}
           }
         }
-      } finally { cursor.remove(); }
+      } finally {
+        cursor.remove();
+        if (ttsBuf.trim()) ttsEnqueue(ttsBuf.trim()); // speak any trailing text
+      }
       const goalsMatch = fullText.match(/###GOALS###({.*?})###GOALS###/s);
       const rememberMatch = fullText.match(/###REMEMBER###({.*?})###REMEMBER###/s);
       const cleanReply = fullText.replace(/\n?###GOALS###.*?###GOALS###/s, '').replace(/\n?###REMEMBER###.*?###REMEMBER###/s, '').trim();
@@ -3311,7 +3352,6 @@
       addReplyActions(bubble, cleanReply, 'chat');
       if (rememberMatch) { try { const fact = JSON.parse(rememberMatch[1]).fact; if (fact?.trim()) { const card = document.createElement('div'); card.className = 'remember-card'; card.innerHTML = `<div class="remember-q">Want me to remember this?</div><div class="remember-fact">"${esc(fact.trim())}"</div><div class="remember-actions"><button class="btn btn-ghost remember-no" type="button">No thanks</button><button class="btn btn-primary remember-yes" type="button">Yes, remember it</button></div>`; mdDiv.appendChild(card); card.querySelector('.remember-yes').addEventListener('click', () => { addMemory(fact.trim()); card.innerHTML = '<div class="remember-q" style="color:var(--accent)">📌 Got it.</div>'; }); card.querySelector('.remember-no').addEventListener('click', () => card.remove()); } } catch {} }
       if (goalsMatch) { try { const goals = JSON.parse(goalsMatch[1]); const card = document.createElement('div'); card.className = 'panel'; card.style.cssText = 'margin-top:12px;border:1px solid rgba(200,40,40,0.3);background:rgba(200,40,40,0.05)'; card.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:10px">Recommended goals</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-bottom:14px"><div><div style="font-size:20px;font-weight:800;color:var(--accent)">${goals.calories}</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">cal</div></div><div><div style="font-size:20px;font-weight:800">${goals.protein}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">protein</div></div><div><div style="font-size:20px;font-weight:800">${goals.carbs}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">carbs</div></div><div><div style="font-size:20px;font-weight:800">${goals.fat}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">fat</div></div></div><button class="btn btn-primary btn-block" id="applyGoalsBtn" type="button">Apply these goals →</button>`; mdDiv.appendChild(card); card.querySelector('#applyGoalsBtn').addEventListener('click', async () => { card.querySelector('#applyGoalsBtn').textContent = 'Saving…'; card.querySelector('#applyGoalsBtn').disabled = true; const updates = { calorie_goal: goals.calories, protein_goal: goals.protein }; cachedProfile = { ...(cachedProfile || {}), ...updates }; lsSet('fernfit_profile', cachedProfile); const pfCalEl = $('pfCal'), pfProtEl = $('pfProtein'); if (pfCalEl) pfCalEl.value = goals.calories; if (pfProtEl) pfProtEl.value = goals.protein; try { await apiPost('/api/profile', updates); } catch {} renderFoodTotals(); showToast('Goals updated ✓'); card.querySelector('#applyGoalsBtn').textContent = '✓ Applied'; }); } catch {} }
-      speakText(cleanReply);
       if (text) chatHistory.push({ role: 'user', content: text });
       chatHistory.push({ role: 'assistant', content: cleanReply });
     }
