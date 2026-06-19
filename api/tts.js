@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > 4096) return res.status(400).json({ error: 'text too long (max 4096 chars)' });
 
-  const voice = body?.voice || 'fable';
+  const voice = body?.voice || 'echo';
   const speed = Math.min(Math.max(parseFloat(body?.speed) || 1.15, 0.25), 4.0);
 
   try {

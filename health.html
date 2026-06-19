@@ -3186,7 +3186,7 @@
       const p = fetch('/api/tts', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ text: sentence.trim().slice(0, 400), voice: 'fable', speed: 1.15 }),
+        body: JSON.stringify({ text: sentence.trim().slice(0, 500), voice: 'echo', speed: 1.1 }),
       }).then(r => r.ok ? r.blob() : null).catch(() => null);
       _ttsQueue.push(p);
       if (!_ttsPlaying) _ttsPlayNext();
@@ -3219,7 +3219,7 @@
         const r = await fetch('/api/tts', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ text: spoken, voice: 'fable', speed: 1.15 }),
+          body: JSON.stringify({ text: spoken, voice: 'echo', speed: 1.1 }),
         });
         if (!r.ok) throw new Error('TTS request failed: ' + r.status);
         const blob = await r.blob();
@@ -3311,7 +3311,7 @@
       mdDiv.appendChild(cursor);
       const reader = r.body.getReader();
       const decoder = new TextDecoder();
-      let buf = '', ttsBuf = '';
+      let buf = '', ttsBuf = '', ttsSentences = [];
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -3329,11 +3329,12 @@
               if (ev.text) {
                 fullText += ev.text;
                 ttsBuf += ev.text;
-                // Fire TTS for each complete sentence as it arrives
+                // Collect complete sentences; send to TTS in pairs for natural prosody
                 let m;
                 while ((m = ttsBuf.match(/^(.*?[.!?])\s+/s)) !== null) {
-                  ttsEnqueue(m[1]);
+                  ttsSentences.push(m[1]);
                   ttsBuf = ttsBuf.slice(m[0].length);
+                  if (ttsSentences.length >= 2) { ttsEnqueue(ttsSentences.join(' ')); ttsSentences = []; }
                 }
                 cursor.remove(); mdDiv.textContent = fullText; mdDiv.appendChild(cursor);
                 $('chatLog').scrollTop = $('chatLog').scrollHeight;
@@ -3343,7 +3344,8 @@
         }
       } finally {
         cursor.remove();
-        if (ttsBuf.trim()) ttsEnqueue(ttsBuf.trim()); // speak any trailing text
+        const remaining = [...ttsSentences, ttsBuf].filter(s => s.trim()).join(' ').trim();
+        if (remaining) ttsEnqueue(remaining);
       }
       const goalsMatch = fullText.match(/###GOALS###({.*?})###GOALS###/s);
       const rememberMatch = fullText.match(/###REMEMBER###({.*?})###REMEMBER###/s);
