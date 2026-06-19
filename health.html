@@ -1881,11 +1881,8 @@
         <button class="btn btn-ghost" id="uploadMealBtn" type="button" style="flex:1;font-size:13px;">Upload photo</button>
         <button class="btn btn-ghost btn-block" id="describeMealBtn" type="button" style="flex:1;font-size:13px;margin:0;">Describe meal</button>
       </div>
-      <!-- "Add context" row: appears after a photo is selected, before analysis -->
-      <div id="photoContextRow" style="display:none;margin-bottom:8px">
-        <input id="photoContextInput" placeholder="Anything to add? (e.g. &quot;grilled not fried&quot;, &quot;ranch on the side&quot;)" style="font-size:13px" />
-        <button class="btn btn-primary btn-block" id="analyzeWithContextBtn" type="button" style="margin-top:8px">Analyze →</button>
-      </div>
+      <!-- photo context row hidden but kept for programmatic use -->
+      <div id="photoContextRow" style="display:none"><input id="photoContextInput" /><button id="analyzeWithContextBtn" style="display:none"></button></div>
       <input type="file" id="foodCameraInput" accept="image/*" capture="environment" />
       <input type="file" id="foodPhotoInput" accept="image/*" />
 
@@ -4436,7 +4433,7 @@
     }
     let _pendingFoodImage = null; // holds compressed image while context row is visible
     async function analyzeFood({ image, text, context }) {
-      $('photoContextRow').style.display = 'none';
+      _pendingFoodImage = null;
       $('foodEstimate').classList.add('open');
       $('foodLoading').style.display = 'flex';
       $('foodEstimateInner').style.display = 'none';
@@ -4470,9 +4467,8 @@
       reader.onload = async () => {
         const small = await compressImage(reader.result);
         _pendingFoodImage = small;
-        $('photoContextInput').value = '';
-        $('photoContextRow').style.display = 'block';
-        $('photoContextRow').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Auto-analyze immediately — don't make user find a hidden button after camera closes
+        analyzeFood({ image: small });
       };
       reader.readAsDataURL(file);
       input.value = '';
@@ -4502,13 +4498,9 @@
       $('uploadMealBtn').addEventListener('click', () => $('foodPhotoInput').click());
       $('foodCameraInput').addEventListener('change', () => handleFoodFile($('foodCameraInput')));
       $('foodPhotoInput').addEventListener('change', () => handleFoodFile($('foodPhotoInput')));
-      $('analyzeWithContextBtn').addEventListener('click', () => {
-        const ctx = $('photoContextInput').value.trim();
-        analyzeFood({ image: _pendingFoodImage, context: ctx });
-      });
-      $('describeMealBtn').addEventListener('click', () => { const r = $('describeRow'); r.style.display = r.style.display === 'none' ? 'block' : 'none'; });
+      $('describeMealBtn').addEventListener('click', () => { const r = $('describeRow'); r.style.display = r.style.display === 'none' ? 'block' : 'none'; if (r.style.display === 'block') { r.scrollIntoView({ behavior: 'smooth', block: 'center' }); $('describeInput').focus(); } });
       $('describeGoBtn').addEventListener('click', () => { const txt = $('describeInput').value.trim(); if (!txt) return; analyzeFood({ text: txt }); $('describeInput').value = ''; $('describeRow').style.display = 'none'; });
-      $('foodDiscard').addEventListener('click', () => { $('foodEstimate').classList.remove('open'); $('photoContextRow').style.display = 'none'; });
+      $('foodDiscard').addEventListener('click', () => { $('foodEstimate').classList.remove('open'); });
       $('foodLogBtn').addEventListener('click', () => {
         haptic([30, 50, 30]);
         const meal = {
@@ -4518,7 +4510,6 @@
         };
         logMeal(meal);
         $('foodEstimate').classList.remove('open');
-        $('photoContextRow').style.display = 'none';
       });
       const go = $('goFoodBtn'); if (go) go.addEventListener('click', () => goTab('food'));
     })();
