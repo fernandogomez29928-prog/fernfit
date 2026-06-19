@@ -3169,7 +3169,7 @@
     }
 
     async function _ttsPlayNext() {
-      if (!_ttsQueue.length) { _ttsPlaying = false; _speaking = false; const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'none'; return; }
+      if (!_ttsQueue.length) { _ttsPlaying = false; _speaking = false; const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'none'; if (window._restartMicIfHandsFree) window._restartMicIfHandsFree(); return; }
       _ttsPlaying = true; _speaking = true;
       const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'flex';
       const blob = await _ttsQueue.shift();
@@ -3493,32 +3493,101 @@
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const micBtn = $('chatMicBtn');
       if (!SpeechRecognition) { micBtn.style.display = 'none'; return; }
+
       const rec = new SpeechRecognition();
-      rec.continuous = false;
+      rec.continuous = true;
       rec.interimResults = true;
       rec.lang = 'en-US';
-      let listening = false, baseText = '';
-      rec.onstart = () => { listening = true; micBtn.classList.add('recording'); micBtn.title = 'Listening… tap to stop'; };
-      rec.onend   = () => {
-        listening = false; micBtn.classList.remove('recording'); micBtn.title = 'Tap to speak';
-        /* In voice mode: auto-send after mic stops */
-        if (chatMode === 'voice' && chatInput.value.trim()) { setTimeout(() => $('chatSendBtn').click(), 120); }
+
+      let listening = false, baseText = '', silenceTimer = null, handsFreeActive = false, hasSpeech = false;
+
+      function resetSilenceTimer() {
+        clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(() => {
+          // 5 seconds of silence — stop and send
+          if (baseText.trim()) { try { rec.stop(); } catch(e) {} }
+          else { hasSpeech = false; } // nothing said yet, keep waiting
+        }, 5000);
+      }
+
+      function startMic() {
+        baseText = ''; hasSpeech = false; chatInput.value = '';
+        clearTimeout(silenceTimer);
+        try { rec.start(); } catch(e) {}
+      }
+
+      function stopHandsFree() {
+        handsFreeActive = false;
+        clearTimeout(silenceTimer);
+        try { rec.stop(); } catch(e) {}
+        micBtn.classList.remove('recording');
+        micBtn.title = 'Tap to speak';
+      }
+
+      rec.onstart = () => {
+        listening = true;
+        micBtn.classList.add('recording');
+        micBtn.title = chatMode === 'voice' ? 'Tap to stop hands-free' : 'Listening… tap to stop';
       };
+
+      rec.onend = () => {
+        listening = false;
+        micBtn.classList.remove('recording');
+        clearTimeout(silenceTimer);
+        if (chatMode === 'voice' && handsFreeActive) {
+          if (baseText.trim()) {
+            chatInput.value = baseText.trim();
+            baseText = '';
+            setTimeout(() => $('chatSendBtn').click(), 50);
+            // mic restarts after TTS finishes via window._restartMicIfHandsFree
+          } else {
+            // nothing heard — restart mic and keep waiting
+            setTimeout(() => { if (handsFreeActive) startMic(); }, 400);
+          }
+        } else if (chatMode === 'talk' && baseText.trim()) {
+          chatInput.value = baseText.trim();
+        }
+        micBtn.title = handsFreeActive ? 'Tap to stop hands-free' : 'Tap to speak';
+      };
+
       rec.onresult = (e) => {
         let interim = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
           if (e.results[i].isFinal) { baseText += e.results[i][0].transcript + ' '; }
           else { interim = e.results[i][0].transcript; }
         }
-        chatInput.value = (baseText + interim).trim();
-        chatInput.style.height = 'auto';
-        chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+        const combined = (baseText + interim).trim();
+        if (combined) {
+          chatInput.value = combined;
+          chatInput.style.height = 'auto';
+          chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+          if (!hasSpeech) hasSpeech = true;
+          if (chatMode === 'voice' && handsFreeActive) resetSilenceTimer();
+        }
       };
-      rec.onerror = (e) => { if (e.error !== 'aborted') console.warn('[mic]', e.error); };
+
+      rec.onerror = (e) => {
+        if (e.error === 'aborted') return;
+        console.warn('[mic]', e.error);
+        if (chatMode === 'voice' && handsFreeActive) setTimeout(() => { if (handsFreeActive) startMic(); }, 1000);
+      };
+
       micBtn.addEventListener('click', () => {
-        if (listening) { rec.stop(); }
-        else { baseText = ''; chatInput.value = ''; rec.start(); }
+        if (chatMode === 'voice') {
+          if (handsFreeActive) { stopHandsFree(); }
+          else { handsFreeActive = true; startMic(); }
+        } else {
+          if (listening) { rec.stop(); }
+          else { baseText = ''; chatInput.value = ''; try { rec.start(); } catch(e) {} }
+        }
       });
+
+      // Called by TTS system after Omni finishes speaking — restarts mic for hands-free loop
+      window._restartMicIfHandsFree = () => {
+        if (chatMode === 'voice' && handsFreeActive && !listening) {
+          setTimeout(() => { if (handsFreeActive && !listening) startMic(); }, 700);
+        }
+      };
     })();
 
     document.querySelectorAll('[data-coach]').forEach(b => b.addEventListener('click', () => {
