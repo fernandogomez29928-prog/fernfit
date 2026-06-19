@@ -3150,43 +3150,54 @@
     // 'type'  = keyboard only, no mic, no TTS
     // 'talk'  = mic fills input, user sends manually, no TTS back
     // 'voice' = mic + auto-sends after speaking, Omni talks back (TTS)
-    // TODO before app submission: upgrade 'voice' TTS to OpenAI TTS API
-    //   1. Add OPENAI_API_KEY to Vercel env vars
-    //   2. Create api/tts.js that calls https://api.openai.com/v1/audio/speech (voice:'onyx')
-    //   3. Replace speechSynthesis.speak() below with fetch('/api/tts') + new Audio()
     let chatMode = lsGet('fernfit_chat_mode', 'type');
+    let _currentAudio = null;
+    function stopSpeaking() {
+      if (_currentAudio) { _currentAudio.pause(); _currentAudio.src = ''; _currentAudio = null; }
+      const dot = $('voiceSpeakingDot');
+      if (dot) dot.style.display = 'none';
+      _speaking = false;
+    }
     function applyChatMode(mode) {
       chatMode = mode;
       lsSet('fernfit_chat_mode', mode);
       document.querySelectorAll('.chat-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
       const mic = $('chatMicBtn');
       if (mic) mic.style.display = (mode === 'talk' || mode === 'voice') ? '' : 'none';
-      if (mode !== 'voice' && window.speechSynthesis) { window.speechSynthesis.cancel(); const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'none'; }
+      if (mode !== 'voice') stopSpeaking();
     }
     document.querySelectorAll('.chat-mode-btn').forEach(b => b.addEventListener('click', () => applyChatMode(b.dataset.mode)));
     applyChatMode(chatMode); /* restore saved mode on load */
 
     let _speaking = false;
-    function speakText(text) {
-      if (chatMode !== 'voice' || !window.speechSynthesis) return;
-      window.speechSynthesis.cancel();
+    async function speakText(text) {
+      if (chatMode !== 'voice') return;
+      stopSpeaking();
       const clean = text
         .replace(/#{1,6}\s?/g, '').replace(/\*\*?|__?/g, '')
         .replace(/`[^`]*`/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
         .replace(/^\s*[-*>]\s+/gm, '').replace(/\n{2,}/g, '. ').trim();
       if (!clean) return;
-      const utterance = new SpeechSynthesisUtterance(clean);
-      const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find(v => /daniel|alex|samantha|google us english|en-us/i.test(v.name + v.lang))
-        || voices.find(v => /en/i.test(v.lang));
-      if (preferred) utterance.voice = preferred;
-      utterance.rate = 0.92;
-      utterance.pitch = 0.88;
-      utterance.volume = 1;
       const dot = $('voiceSpeakingDot');
-      utterance.onstart = () => { _speaking = true; if (dot) dot.style.display = 'flex'; };
-      utterance.onend = utterance.onerror = () => { _speaking = false; if (dot) dot.style.display = 'none'; };
-      window.speechSynthesis.speak(utterance);
+      try {
+        const r = await fetch('/api/tts', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ text: clean.slice(0, 4096), voice: 'onyx' }),
+        });
+        if (!r.ok) throw new Error('TTS request failed: ' + r.status);
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        _currentAudio = audio;
+        _speaking = true;
+        if (dot) dot.style.display = 'flex';
+        audio.onended = audio.onerror = () => { _speaking = false; if (dot) dot.style.display = 'none'; URL.revokeObjectURL(url); _currentAudio = null; };
+        audio.play();
+      } catch (err) {
+        console.warn('TTS error:', err);
+        if (dot) dot.style.display = 'none';
+      }
     }
 
     /* ── Profile completion progress bar ── */
