@@ -23,7 +23,8 @@ export default async function handler(req, res) {
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > 4096) return res.status(400).json({ error: 'text too long (max 4096 chars)' });
 
-  const voice = body?.voice || 'onyx';
+  const voice = body?.voice || 'echo';
+  const speed = Math.min(Math.max(parseFloat(body?.speed) || 1.15, 0.25), 4.0);
 
   try {
     const r = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
         model: 'tts-1',
         input: text,
         voice,
+        speed,
         response_format: 'mp3',
       }),
     });

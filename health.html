@@ -3184,12 +3184,15 @@
         .replace(/`[^`]*`/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
         .replace(/^\s*[-*>]\s+/gm, '').replace(/\n{2,}/g, '. ').trim();
       if (!clean) return;
+      // Speak only the first ~2 sentences to cut TTS latency — full response is in the chat
+      const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
+      const spoken = sentences.slice(0, 2).join(' ').trim().slice(0, 400) || clean.slice(0, 400);
       const dot = $('voiceSpeakingDot');
       try {
         const r = await fetch('/api/tts', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ text: clean.slice(0, 4096), voice: 'onyx' }),
+          body: JSON.stringify({ text: spoken, voice: 'echo', speed: 1.15 }),
         });
         if (!r.ok) throw new Error('TTS request failed: ' + r.status);
         const blob = await r.blob();
