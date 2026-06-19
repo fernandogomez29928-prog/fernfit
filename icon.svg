@@ -4,19 +4,25 @@
       <stop offset="0" stop-color="#141416"/>
       <stop offset="1" stop-color="#050506"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#D8FF5A"/>
-      <stop offset="1" stop-color="#C8F135"/>
+    <linearGradient id="txt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D63232"/>
+      <stop offset="1" stop-color="#8C1414"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect x="8" y="8" width="496" height="496" rx="106" fill="none" stroke="rgba(200,241,53,0.12)" stroke-width="2"/>
-  <!-- Stylized F -->
-  <g fill="url(#accent)">
-    <rect x="168" y="150" width="42" height="212" rx="10"/>
-    <rect x="168" y="150" width="150" height="42" rx="10"/>
-    <rect x="168" y="236" width="120" height="40" rx="10"/>
-  </g>
-  <!-- pulse dot -->
-  <circle cx="338" cy="338" r="20" fill="url(#accent)"/>
+  <rect x="10" y="10" width="492" height="492" rx="104" fill="none" stroke="rgba(180,30,30,0.18)" stroke-width="2"/>
+  <text x="256" y="232"
+    font-family="'Arial Black','Arial Bold',Impact,sans-serif"
+    font-size="196"
+    font-weight="900"
+    letter-spacing="-8"
+    text-anchor="middle"
+    fill="url(#txt)">OM</text>
+  <text x="256" y="432"
+    font-family="'Arial Black','Arial Bold',Impact,sans-serif"
+    font-size="196"
+    font-weight="900"
+    letter-spacing="-8"
+    text-anchor="middle"
+    fill="url(#txt)">NI</text>
 </svg>
