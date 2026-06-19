@@ -2166,6 +2166,21 @@
 
   </main>
 
+  <!-- Barcode scanner modal — must be in DOM before scripts execute -->
+  <div id="barcodeModal">
+    <div style="position:relative;width:100%;max-width:380px;">
+      <video id="barcodeVideo" autoplay playsinline muted></video>
+      <div class="barcode-frame">
+        <div class="barcode-corners-tr"></div>
+        <div class="barcode-corners-bl"></div>
+        <div class="barcode-scan-line"></div>
+      </div>
+    </div>
+    <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:20px;text-align:center;">Point camera at barcode</p>
+    <button id="barcodeCloseBtn" class="btn btn-ghost" style="margin-top:16px;color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Cancel</button>
+    <input type="file" id="barcodeFallbackInput" accept="image/*" capture="environment" style="display:none" />
+  </div>
+
   <script>
   (function () {
     const KEY       = 'whoop_tokens_v1';
@@ -5068,20 +5083,6 @@
   })();
   </script>
 
-  <!-- Barcode scanner modal -->
-  <div id="barcodeModal">
-    <div style="position:relative;width:100%;max-width:380px;">
-      <video id="barcodeVideo" autoplay playsinline muted></video>
-      <div class="barcode-frame">
-        <div class="barcode-corners-tr"></div>
-        <div class="barcode-corners-bl"></div>
-        <div class="barcode-scan-line"></div>
-      </div>
-    </div>
-    <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:20px;text-align:center;">Point camera at barcode</p>
-    <button id="barcodeCloseBtn" class="btn btn-ghost" style="margin-top:16px;color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Cancel</button>
-    <input type="file" id="barcodeFallbackInput" accept="image/*" capture="environment" style="display:none" />
-  </div>
 
 </body>
 </html>
