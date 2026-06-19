@@ -2113,6 +2113,10 @@
     const SCOPES    = 'read:recovery read:sleep read:workout read:cycles read:profile read:body_measurement offline';
     const CIRC      = 603.19; // 2 * π * 96
 
+    /* ── localStorage helpers (local copies — lsGet/lsSet also live in script 2) ── */
+    const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
     /* ── Token storage ── */
     function loadTokens()  { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
     function saveTokens(t) { try { localStorage.setItem(KEY, JSON.stringify(t)); } catch {} }
@@ -2351,7 +2355,7 @@
           animateValue('whoopHrv', 0, hrv, 700);
           animateValue('whoopRhr', 0, rhr, 700);
           setRing(score);
-          refreshCoachSuggestions(score);
+          if (window.refreshCoachSuggestions) window.refreshCoachSuggestions(score);
           startHolo();
           setZone('whoopZoneHrv', zone(hrv, 60, 40));
           setZone('whoopZoneRhr', score >= 67 ? 'z-good' : score >= 34 ? 'z-norm' : 'z-warn');
@@ -2677,6 +2681,7 @@
       } catch (e) { /* silent */ }
     }
     setTimeout(syncWhoopHistory, 4000); // run after page settles
+    window.enterScreen = enterScreen; // expose to script 2 IIFE
   })();
   </script>
 
@@ -2700,7 +2705,7 @@
       Object.entries(pages).forEach(([k, p]) => {
         const isActive = k === name;
         p.classList.toggle('active', isActive);
-        if (isActive) enterScreen(p);
+        if (isActive && window.enterScreen) window.enterScreen(p);
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (name === 'coach' && !briefingLoaded) { briefingLoaded = true; loadBriefing(); }
@@ -3142,6 +3147,7 @@
         btn.textContent = s.label;
       });
     }
+    window.refreshCoachSuggestions = refreshCoachSuggestions; // expose to script 1 IIFE
 
     /* ── Haptic feedback helper ── */
     const haptic = (pattern) => { if (navigator.vibrate) navigator.vibrate(pattern); };
