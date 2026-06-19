@@ -1979,7 +1979,6 @@
         <button class="btn btn-ghost" data-coach="recipe" type="button">Recipe ideas</button>
         <button class="btn btn-ghost" data-coach="workout" type="button">Workout plan</button>
         <button class="btn btn-ghost" data-coach="grocery" type="button">Shopping list</button>
-        <button class="btn btn-ghost" id="refreshBriefingBtn" type="button">New briefing</button>
         <button class="btn btn-ghost" id="weeklyPlanBtn" type="button">Weekly split</button>
         <button class="btn btn-ghost" id="trainingLogBtn" type="button">Log lifts</button>
         <button class="btn btn-ghost" data-coach="digest" type="button">Weekly digest</button>
@@ -3362,7 +3361,7 @@
         ? [{ coach: 'workout', label: 'Hard session' }, { coach: 'meal', label: 'Performance fuel' }, { coach: 'recipe', label: 'High-protein recipes' }, { coach: 'grocery', label: 'Shopping list' }]
         : score >= 45
         ? [{ coach: 'workout', label: 'Moderate session' }, { coach: 'meal', label: 'Recovery meal plan' }, { coach: 'recipe', label: 'Recipe ideas' }, { coach: 'grocery', label: 'Shopping list' }]
-        : [{ coach: 'chat', label: 'Rest protocol', msg: 'Give me a full rest and recovery protocol for today.' }, { coach: 'chat', label: "What's hurting recovery?", msg: "Why is my recovery low and what can I do today?" }, { coach: 'meal', label: 'Anti-inflammatory foods' }, { coach: 'digest', label: 'Weekly digest' }];
+        : [{ coach: 'chat', label: 'Rest protocol', msg: 'Give me a full rest and recovery protocol for today.' }, { coach: 'chat', label: "What's hurting recovery?", msg: "Why is my recovery low and what can I do today?" }, { coach: 'meal', label: 'Anti-inflammatory foods' }, { coach: 'grocery', label: 'Shopping list' }];
       btns.forEach((btn, i) => {
         if (i >= sets.length) return;
         const s = sets[i];
@@ -3383,6 +3382,7 @@
     // 'voice' = mic + auto-sends after speaking, Omni talks back (TTS)
     let chatMode = lsGet('fernfit_chat_mode', 'type');
     let _currentAudio = null, _ttsQueue = [], _ttsPlaying = false, _onTtsDone = null;
+    let _speaking = false;
     let _audioCtx = null;
     function _getAudioCtx() {
       if (!_audioCtx || _audioCtx.state === 'closed') _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3456,7 +3456,6 @@
     document.querySelectorAll('.chat-mode-btn').forEach(b => b.addEventListener('click', () => applyChatMode(b.dataset.mode)));
     applyChatMode(chatMode); /* restore saved mode on load */
 
-    let _speaking = false;
     async function speakText(text) {
       if (chatMode !== 'voice') return;
       stopSpeaking();
@@ -3517,7 +3516,7 @@
           : '<p style="color:var(--danger)">' + esc(e.message) + '</p>';
       }
     }
-    $('refreshBriefingBtn').addEventListener('click', loadBriefing);
+    $('refreshBriefingBtn')?.addEventListener('click', loadBriefing);
 
     /* Chat */
     const chatHistory = [];
