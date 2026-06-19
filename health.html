@@ -3336,8 +3336,7 @@
                   ttsBuf = ttsBuf.slice(m[0].length);
                   if (ttsSentences.length >= 2) { ttsEnqueue(ttsSentences.join(' ')); ttsSentences = []; }
                 }
-                cursor.remove(); mdDiv.textContent = fullText; mdDiv.appendChild(cursor);
-                $('chatLog').scrollTop = $('chatLog').scrollHeight;
+                // Don't show raw text while streaming — just keep the cursor visible
               }
             } catch {}
           }
