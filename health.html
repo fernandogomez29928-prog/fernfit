@@ -487,6 +487,29 @@
     .whoop-bio-item--clickable.open { background: rgba(200,40,40,0.04); }
     .whoop-expand-tip { margin-top: 10px; padding: 10px 12px; background: rgba(255,255,255,0.02); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 11.5px; color: var(--text-tertiary); line-height: 1.5; }
 
+    /* ── WHOOP Activities ── */
+    .whoop-activities { margin-top: 20px; }
+    .whoop-activities-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+    .whoop-act-eyebrow { font: 600 10px var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-tertiary); }
+    .whoop-activity { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-soft); border-radius: 14px; margin-bottom: 8px; transition: background 0.15s, border-color 0.15s; }
+    .whoop-activity:last-child { margin-bottom: 0; }
+    .whoop-activity:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.09); }
+    .whoop-act-icon { width: 38px; height: 38px; border-radius: 50%; background: rgba(200,40,40,0.10); border: 1px solid rgba(200,40,40,0.22); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+    .whoop-act-body { flex: 1; min-width: 0; }
+    .whoop-act-name { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .whoop-act-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+    .whoop-act-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .whoop-act-strain { font-size: 18px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; }
+    .whoop-act-strain-lbl { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-quaternary); }
+    .whoop-act-sub { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+    .whoop-act-zone-bar { width: 100%; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; display: flex; gap: 1px; }
+    .whoop-act-zone-seg { height: 100%; border-radius: 1px; }
+    /* Body measurement strip */
+    .whoop-body-strip { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 14px; padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-soft); border-radius: 14px; }
+    .whoop-body-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .whoop-body-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); }
+    .whoop-body-val { font-size: 16px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
     /* ── Weekly Workout Plan ── */
     .week-plan-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; margin-top: 14px; }
     @media (max-width: 600px) { .week-plan-grid { grid-template-columns: repeat(2,1fr); } }
@@ -1652,6 +1675,30 @@
             <div id="whoopVerdictReasons" class="whoop-verdict-reasons"></div>
           </div>
 
+          <!-- Body measurements from WHOOP -->
+          <div class="whoop-body-strip" id="whoopBodyStrip" style="display:none">
+            <div class="whoop-body-item">
+              <span class="whoop-body-label">Height</span>
+              <span class="whoop-body-val" id="whoopHeight">—</span>
+            </div>
+            <div class="whoop-body-item">
+              <span class="whoop-body-label">Weight</span>
+              <span class="whoop-body-val" id="whoopWeight">—</span>
+            </div>
+            <div class="whoop-body-item">
+              <span class="whoop-body-label">Max HR</span>
+              <span class="whoop-body-val" id="whoopMaxHrBody">—</span>
+            </div>
+          </div>
+
+          <!-- Recent Activities -->
+          <div class="whoop-activities" id="whoopActivities" style="display:none">
+            <div class="whoop-activities-head">
+              <span class="whoop-act-eyebrow">Recent Activities</span>
+            </div>
+            <div id="whoopActivitiesList"></div>
+          </div>
+
           <button id="whoopDisconnectBtn" class="whoop-disconnect-btn" type="button">Disconnect</button>
         </div>
 
@@ -2337,11 +2384,14 @@
       try {
         const now30h = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
         const nowISO = new Date().toISOString();
-        const [rec, sleep, cycle, hrData] = await Promise.all([
+        const [rec, sleep, cycle, hrData, workouts, recHistory, bodyMeas] = await Promise.all([
           whoopFetch('/recovery?limit=1', t).catch(() => null),
           whoopFetch('/activity/sleep?limit=1', t).catch(() => null),
           whoopFetch('/cycle?limit=1', t).catch(() => null),
           whoopFetch(`/heart_rate?start=${now30h}&end=${nowISO}&order=t&step=300`, t).catch(() => null),
+          whoopFetch('/activity/workout?limit=7', t).catch(() => null),
+          whoopFetch('/recovery?limit=30', t).catch(() => null),
+          whoopFetch('/body/measurement', t).catch(() => null),
         ]);
 
         /* Recovery */
@@ -2610,6 +2660,122 @@
         }
 
         setVerdict(score, hrv, rhr, strain);
+
+        /* ── 30-day HRV / RHR baselines from history ── */
+        if (recHistory?.records?.length >= 3) {
+          const recs = recHistory.records.filter(r => r?.score?.hrv_rmssd_milli);
+          if (recs.length >= 3) {
+            const avgHrv30 = Math.round(recs.reduce((a, r) => a + r.score.hrv_rmssd_milli, 0) / recs.length);
+            const avgRhr30 = Math.round(recs.filter(r => r?.score?.resting_heart_rate).reduce((a, r) => a + r.score.resting_heart_rate, 0) / recs.filter(r => r?.score?.resting_heart_rate).length);
+            setText('hrvBaseline', avgHrv30 + ' ms');
+            const hrvDelta = hrv - avgHrv30;
+            const hrvStatus = hrvDelta >= 5 ? 'Above baseline ↑' : hrvDelta <= -5 ? 'Below baseline ↓' : 'On baseline →';
+            setText('hrvZone', hrvStatus);
+            if (avgRhr30) {
+              setText('rhrBaseline', avgRhr30 + ' bpm');
+              const rhrDelta = rhr - avgRhr30;
+              const rhrStatus = rhrDelta >= 3 ? 'Elevated ↑' : rhrDelta <= -3 ? 'Lower than usual ↓' : 'On baseline →';
+              setText('rhrZone', rhrStatus);
+            }
+          }
+        }
+
+        /* ── Body measurements ── */
+        if (bodyMeas) {
+          const hCm = bodyMeas.height_meter != null ? Math.round(bodyMeas.height_meter * 100) : null;
+          const hIn = hCm != null ? Math.round(hCm / 2.54) : null;
+          const wKg = bodyMeas.weight_kilogram;
+          const wLb = wKg != null ? Math.round(wKg * 2.20462) : null;
+          const mhr = bodyMeas.max_heart_rate;
+          const strip = document.getElementById('whoopBodyStrip');
+          if (strip && (hIn || wLb || mhr)) {
+            strip.style.display = '';
+            if (hIn != null) setText('whoopHeight', Math.floor(hIn / 12) + '\'' + (hIn % 12) + '"');
+            if (wLb != null) setText('whoopWeight', wLb + ' lbs');
+            if (mhr != null) setText('whoopMaxHrBody', mhr + ' bpm');
+          }
+        }
+
+        /* ── Recent workout activities ── */
+        const SPORT = {
+          0:'Running', 1:'Cycling', 2:'Baseball', 3:'Basketball', 4:'Rowing', 5:'Fencing',
+          6:'Field Hockey', 7:'Football', 8:'Golf', 9:'Ice Hockey', 10:'Lacrosse',
+          11:'Rugby', 12:'Sailing', 13:'Skiing', 14:'Soccer', 15:'Softball', 16:'Squash',
+          17:'Swimming', 18:'Tennis', 19:'Track & Field', 20:'Volleyball', 21:'Water Polo',
+          22:'Wrestling', 23:'Boxing', 24:'Dance', 25:'Pilates', 26:'Yoga', 27:'Weightlifting',
+          28:'CrossFit', 29:'Functional Fitness', 30:'Duathlon', 31:'Gymnastics', 32:'Hiking',
+          33:'Horseback Riding', 34:'Kayaking', 35:'Martial Arts', 36:'Mountain Biking',
+          37:'Powerlifting', 38:'Rock Climbing', 39:'Rowing', 40:'Skateboarding',
+          41:'Skiing', 42:'Snowboarding', 43:'Softball', 44:'Stairmaster',
+          45:'Stand Up Paddling', 46:'Surfing', 47:'Triathlon', 48:'Walking',
+          49:'Water Sports', 50:'Yoga', 51:'MMA', 52:'Autocross',
+          63:'Weight Training', 71:'Boxing', 72:'Kickboxing', 73:'Martial Arts',
+          74:'Basketball', 75:'Tennis',
+        };
+        const SPORT_EMOJI = {
+          0:'🏃', 1:'🚴', 3:'🏀', 17:'🏊', 14:'⚽', 18:'🎾', 27:'🏋️', 28:'🏋️',
+          29:'💪', 37:'🏋️', 38:'🧗', 48:'🚶', 26:'🧘', 25:'🧘', 63:'🏋️',
+          71:'🥊', 72:'🥊', 73:'🥋', 74:'🏀', 75:'🎾', 24:'💃', 23:'🥊',
+        };
+        const ZONE_COLORS = ['#3A6FBF','#6BE3A4','#9d1515','#F2C063','#FF6B6B','#FF2020'];
+
+        function fmtDuration(ms) {
+          const m = Math.round(ms / 60000);
+          if (m < 60) return m + ' min';
+          return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2,'0') + 'm';
+        }
+
+        const wkts = workouts?.records || [];
+        if (wkts.length) {
+          const actSection = document.getElementById('whoopActivities');
+          const actList = document.getElementById('whoopActivitiesList');
+          if (actSection && actList) {
+            actSection.style.display = '';
+            actList.innerHTML = '';
+            for (const w of wkts) {
+              const sc = w.score;
+              const sportId = w.sport_id ?? -1;
+              const sportName = SPORT[sportId] || 'Workout';
+              const emoji = SPORT_EMOJI[sportId] || '💪';
+              const startD = new Date(w.start || w.created_at);
+              const dateStr = startD.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+              const durMs = w.end && w.start ? new Date(w.end) - new Date(w.start) : 0;
+              const dur = durMs > 0 ? fmtDuration(durMs) : '';
+              const strain = sc?.strain != null ? sc.strain.toFixed(1) : null;
+              const avgHrW = sc?.average_heart_rate != null ? Math.round(sc.average_heart_rate) : null;
+              const cals = sc?.kilojoule != null ? Math.round(sc.kilojoule * 0.239006 / 10) * 10 : null;
+              const dist = sc?.distance_meter != null && sc.distance_meter > 0 ? (sc.distance_meter / 1609.34).toFixed(1) + ' mi' : null;
+
+              const strainColor = strain >= 18 ? '#FF6B6B' : strain >= 14 ? '#F2C063' : strain >= 10 ? '#9d1515' : '#6BE3A4';
+
+              /* HR zones bar */
+              let zonesBar = '';
+              const zd = sc?.zone_duration;
+              if (zd) {
+                const zVals = [zd.zone_zero_milli||0, zd.zone_one_milli||0, zd.zone_two_milli||0, zd.zone_three_milli||0, zd.zone_four_milli||0, zd.zone_five_milli||0];
+                const zTotal = zVals.reduce((a,b) => a+b, 0) || 1;
+                zonesBar = '<div class="whoop-act-zone-bar">' + zVals.map((v,i) => `<div class="whoop-act-zone-seg" style="width:${(v/zTotal*100).toFixed(1)}%;background:${ZONE_COLORS[i]}"></div>`).join('') + '</div>';
+              }
+
+              const meta = [dur, avgHrW ? avgHrW + ' bpm avg' : null, dist].filter(Boolean).join(' · ');
+
+              const div = document.createElement('div');
+              div.className = 'whoop-activity';
+              div.innerHTML = `
+                <div class="whoop-act-icon">${emoji}</div>
+                <div class="whoop-act-body">
+                  <div class="whoop-act-name">${sportName}</div>
+                  <div class="whoop-act-meta">${dateStr}${meta ? ' · ' + meta : ''}</div>
+                  ${zonesBar}
+                </div>
+                <div class="whoop-act-right">
+                  ${strain ? `<div class="whoop-act-strain" style="color:${strainColor}">${strain}</div><div class="whoop-act-strain-lbl">strain</div>` : ''}
+                  ${cals ? `<div class="whoop-act-sub">${cals} kcal</div>` : ''}
+                </div>`;
+              actList.appendChild(div);
+            }
+          }
+        }
 
         /* Publish latest readings for the AI Coach */
         window.FERNFIT_WHOOP = {

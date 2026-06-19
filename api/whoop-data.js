@@ -13,7 +13,8 @@ export default async function handler(req, res) {
     if (k !== 'path') fwd.set(k, String(v));
   }
   const qs   = fwd.toString();
-  const base = (path.startsWith('/cycle') || path.startsWith('/heart_rate'))
+  // /cycle and /heart_rate are v1-only; /body and /profile are v1; activity+recovery use v2
+  const base = (path.startsWith('/cycle') || path.startsWith('/heart_rate') || path.startsWith('/body') || path.startsWith('/profile'))
     ? 'https://api.prod.whoop.com/developer/v1'
     : 'https://api.prod.whoop.com/developer/v2';
   const url = base + path + (qs ? '?' + qs : '');
