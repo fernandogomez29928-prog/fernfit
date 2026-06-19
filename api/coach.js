@@ -469,7 +469,8 @@ Step 3 — Sanity-check totals with these anchors:
   • Plain chicken breast: ~165 cal/6 oz | cooked white rice: ~200 cal/cup
   • Salad greens: ~20 cal/2 cups | 1 tbsp olive oil: 120 cal
   • If sauces, dressings, or oils are visible — add them as separate line items; they are the #1 source of under-counting
-Step 4 — Lean slightly conservative on carbs/fat. If the user added context about cooking method or extra items, factor that in.
+Step 4 — Hidden-fat rule (the #1 source of error): assume any sautéed, pan-fried, roasted, or restaurant-cooked savory item was cooked in oil or butter (~1 tbsp / 120 cal per portion) UNLESS it is clearly raw, steamed, boiled, grilled dry, or air-fried. Glossy/shiny surfaces, browning, or a sheen on the plate mean added fat — count it. Only skip added fat if the food is visibly dry or plainly raw.
+Step 5 — Lean slightly conservative overall, but do NOT undercount fat. If the user added context about cooking method or extra items, factor that in.
 If any context text is provided below the instruction, use it to correct or supplement your visual estimate.
 
 Respond with ONLY a fenced json code block — nothing before or after it:

@@ -1773,7 +1773,7 @@
         <div class="stack-block">
           <div class="stack-block-head">
             <span class="stack-block-title">Body snapshot</span>
-            <button class="btn btn-ghost" id="analyzePhotoBtn" type="button" style="font-size:12px;padding:6px 12px;display:none">Analyze with AI</button>
+            <button class="btn btn-ghost" id="analyzePhotoBtn" type="button" style="font-size:12px;padding:6px 12px;opacity:0.5" disabled>Add a photo to analyze</button>
           </div>
           <div class="photo-upload">
             <input id="bodyPhotoInput" type="file" accept="image/*" />
@@ -2406,9 +2406,15 @@
       const [p, qs] = path.split('?');
       const params = new URLSearchParams(qs || '');
       params.set('path', p);
-      const r = await fetch('/api/whoop-data?' + params, {
-        headers: { Authorization: 'Bearer ' + t.access, Accept: 'application/json' },
-      });
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000); // don't hang forever on a stalled network
+      let r;
+      try {
+        r = await fetch('/api/whoop-data?' + params, {
+          headers: { Authorization: 'Bearer ' + t.access, Accept: 'application/json' },
+          signal: ctrl.signal,
+        });
+      } finally { clearTimeout(timer); }
       if (r.status === 401) {
         const n = await refreshToken(t);
         if (n) return whoopFetch(path, n);
@@ -2770,19 +2776,44 @@
           if (m < 60) return m + ' min';
           return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2,'0') + 'm';
         }
+        // WHOOP v2 sport_name is like "weightlifting" or "functional_fitness" — clean it up.
+        function prettySport(s) {
+          return String(s).replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+        }
+        function emojiForSport(name) {
+          const n = String(name).toLowerCase();
+          if (/run|jog/.test(n)) return '🏃';
+          if (/cycl|bike|ride/.test(n)) return '🚴';
+          if (/swim/.test(n)) return '🏊';
+          if (/walk|hik/.test(n)) return '🚶';
+          if (/yoga|pilates|stretch/.test(n)) return '🧘';
+          if (/box|kickbox/.test(n)) return '🥊';
+          if (/martial|mma|jiu|judo|karate/.test(n)) return '🥋';
+          if (/climb/.test(n)) return '🧗';
+          if (/row/.test(n)) return '🚣';
+          if (/basketball/.test(n)) return '🏀';
+          if (/soccer|football/.test(n)) return '⚽';
+          if (/tennis|squash|racquet|pickle/.test(n)) return '🎾';
+          if (/dance/.test(n)) return '💃';
+          if (/weight|lift|strength|powerlift|crossfit|functional|gym/.test(n)) return '🏋️';
+          return null;
+        }
 
         const wkts = workouts?.records || [];
+        const actSection = document.getElementById('whoopActivities');
+        const actList = document.getElementById('whoopActivitiesList');
         if (wkts.length) {
-          const actSection = document.getElementById('whoopActivities');
-          const actList = document.getElementById('whoopActivitiesList');
           if (actSection && actList) {
             actSection.style.display = '';
             actList.innerHTML = '';
             for (const w of wkts) {
               const sc = w.score;
               const sportId = w.sport_id ?? -1;
-              const sportName = SPORT[sportId] || 'Workout';
-              const emoji = SPORT_EMOJI[sportId] || '💪';
+              // WHOOP API v2 returns a sport_name string; v1 used sport_id. Prefer the name.
+              const sportName = (w.sport_name && String(w.sport_name).trim())
+                ? prettySport(w.sport_name)
+                : (SPORT[sportId] || 'Workout');
+              const emoji = SPORT_EMOJI[sportId] || emojiForSport(sportName) || '💪';
               const startD = new Date(w.start || w.created_at);
               const dateStr = startD.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
               const durMs = w.end && w.start ? new Date(w.end) - new Date(w.start) : 0;
@@ -2821,6 +2852,10 @@
               actList.appendChild(div);
             }
           }
+        } else if (actSection && actList) {
+          // Connected to WHOOP but no recent workouts on record
+          actSection.style.display = '';
+          actList.innerHTML = '<div class="empty-card" style="border-style:dashed"><div class="empty-card-icon">🏋️</div><div class="empty-card-title">No recent workouts</div><div class="empty-card-sub">Activities you record on WHOOP show up here</div></div>';
         }
 
         /* Publish latest readings for the AI Coach */
@@ -2844,7 +2879,10 @@
         setText('whoopUpdated', now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
       } catch (e) {
-        setText('whoopUpdated', 'error');
+        const offline = (typeof navigator !== 'undefined' && navigator.onLine === false) || e.name === 'AbortError';
+        setText('whoopUpdated', offline ? 'offline — tap to retry' : 'couldn’t refresh — tap to retry');
+        const upd = document.getElementById('whoopUpdated');
+        if (upd) { upd.style.cursor = 'pointer'; upd.onclick = () => loadData(); }
         console.error('[whoop]', e);
       }
     }
@@ -2857,6 +2895,95 @@
     }
 
     render();
+
+    /* ── Demo mode: inject realistic fake WHOOP data (no real device needed) ── */
+    window.renderDemoWhoop = function renderDemoWhoop() {
+      try {
+        if (dEl) dEl.style.display = 'none';
+        if (cEl) cEl.style.display = '';
+        const cal = document.getElementById('whoopCalibrating'); if (cal) cal.style.display = 'none';
+
+        const score = 82, hrv = 68, rhr = 49;
+        animateValue('whoopRecoveryScore', 0, score, 900, '%');
+        animateValue('whoopHrv', 0, hrv, 700);
+        animateValue('whoopRhr', 0, rhr, 700);
+        setRing(score); startHolo();
+        setZone('whoopZoneHrv', zone(hrv, 60, 40));
+        setZone('whoopZoneRhr', 'z-good');
+
+        // Sleep
+        const sleepMs = (7 * 60 + 42) * 60000;
+        setText('whoopSleepScore', '89%');
+        setText('whoopSleepDuration', fmtMins(sleepMs));
+        setZone('whoopZoneSleep', zone(89, 85, 70));
+        const stages = document.getElementById('whoopStages');
+        if (stages) {
+          stages.style.display = '';
+          const rem = 95*60000, deep = 84*60000, light = 247*60000, awake = 16*60000;
+          const inBed = rem+deep+light+awake;
+          document.getElementById('whoopStagesMeta').textContent = fmtMins(rem+deep+light) + ' asleep';
+          document.getElementById('whoopStageRem').style.width   = (rem/inBed*100).toFixed(1)+'%';
+          document.getElementById('whoopStageDeep').style.width  = (deep/inBed*100).toFixed(1)+'%';
+          document.getElementById('whoopStageLight').style.width = (light/inBed*100).toFixed(1)+'%';
+          document.getElementById('whoopStageAwake').style.width = (awake/inBed*100).toFixed(1)+'%';
+          setText('whoopStageRemTxt', fmtMins(rem));
+          setText('whoopStageDeepTxt', fmtMins(deep));
+          setText('whoopStageLightTxt', fmtMins(light));
+          setText('whoopStageAwakeTxt', fmtMins(awake));
+        }
+
+        // Strain + secondary stats
+        animateValue('whoopStrain', 0, 13.4, 700);
+        const row2 = document.getElementById('whoopStatsRow2'); if (row2) row2.style.display = '';
+        animateValue('whoopCal', 0, 2480, 800);
+        setText('whoopSteps', '9,120');
+        animateValue('whoopAvgHr', 0, 68, 700);
+        animateValue('whoopMaxHr', 0, 162, 700);
+
+        // Biomarkers
+        const bio = document.getElementById('whoopBio'); if (bio) bio.style.display = '';
+        setText('whoopResp', '14.8'); setZone('whoopZoneResp', 'z-good');
+        setText('whoopSpo2', '97%');  setZone('whoopZoneSpo2', 'z-good');
+        setText('whoopSkinTemp', '93.4°F'); setZone('whoopZoneSkin', 'z-good');
+
+        // Recent activities
+        const actSection = document.getElementById('whoopActivities');
+        const actList = document.getElementById('whoopActivitiesList');
+        if (actSection && actList) {
+          actSection.style.display = '';
+          const demoActs = [
+            { emoji:'🏋️', name:'Weightlifting', day:'Today',     meta:'52 min · 128 bpm avg', strain:'13.4', color:'#F2C063', cals:480 },
+            { emoji:'🏃', name:'Running',        day:'Yesterday', meta:'34 min · 4.2 mi · 154 bpm avg', strain:'11.8', color:'#F2C063', cals:520 },
+            { emoji:'🧘', name:'Yoga',           day:'2 days ago', meta:'41 min · 92 bpm avg', strain:'6.2', color:'#6BE3A4', cals:180 },
+          ];
+          actList.innerHTML = demoActs.map(a => `
+            <div class="whoop-activity">
+              <div class="whoop-act-icon">${a.emoji}</div>
+              <div class="whoop-act-body">
+                <div class="whoop-act-name">${a.name}</div>
+                <div class="whoop-act-meta">${a.day} · ${a.meta}</div>
+              </div>
+              <div class="whoop-act-right">
+                <div class="whoop-act-strain" style="color:${a.color}">${a.strain}</div>
+                <div class="whoop-act-strain-lbl">strain</div>
+                <div class="whoop-act-sub">${a.cals} kcal</div>
+              </div>
+            </div>`).join('');
+        }
+
+        // Publish to the coach
+        window.FERNFIT_WHOOP = {
+          recovery: score, hrv, rhr, strain: 13.4,
+          sleepPerf: 89, sleepDuration: fmtMins(sleepMs),
+          calories: 2480, steps: 9120, avgHr: 68, maxHr: 162,
+          spo2: 97, skinTemp: 34.1,
+        };
+        window.dispatchEvent(new CustomEvent('fernfit-whoop-updated'));
+        setText('whoopUpdated', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        if (window.refreshCoachSuggestions) window.refreshCoachSuggestions(score);
+        if (window.loadIntelCard) window.loadIntelCard();
+      } catch (e) { console.error('[demo-whoop]', e); }
+    };
 
     /* ── WHOOP history backfill (runs once per day, silently) ── */
     async function syncWhoopHistory() {
@@ -3152,8 +3279,8 @@
       else { el.classList.remove('show'); el.innerHTML = ''; }
     }
 
-    $('addHabitBtn').addEventListener('click', () => { const v = prompt('New habit:'); if (v && v.trim()) { habits.push({ name: v.trim(), done: false }); renderHabits(); } });
-    $('addSuppBtn').addEventListener('click', () => { const v = prompt('Supplement / peptide name:'); if (v && v.trim()) { const dose = prompt('Dose (optional):') || ''; supps.push({ name: v.trim(), dose: dose.trim(), taken: false }); renderSupps(); } });
+    $('addHabitBtn')?.addEventListener('click', () => { const v = prompt('New habit:'); if (v && v.trim()) { habits.push({ name: v.trim(), done: false }); renderHabits(); } });
+    $('addSuppBtn')?.addEventListener('click', () => { const v = prompt('Supplement / peptide name:'); if (v && v.trim()) { const dose = prompt('Dose (optional):') || ''; supps.push({ name: v.trim(), dose: dose.trim(), taken: false }); renderSupps(); } });
 
     if (bodyPhotoInput) {
       bodyPhotoInput.addEventListener('change', () => {
@@ -3934,6 +4061,8 @@
       const result = $('photoAnalysisResult');
       if (!analyzeBtn) return;
 
+      function enableAnalyzeBtn() { analyzeBtn.disabled = false; analyzeBtn.style.opacity = '1'; analyzeBtn.textContent = 'Analyze with AI'; }
+
       const PROGRESS_KEY = 'fernfit_progress_photos';
       const MAX_PHOTOS = 12;
       const getPhotos = () => lsGet(PROGRESS_KEY, []) || [];
@@ -3954,7 +4083,7 @@
           const dlabel = new Date(p.date + 'T00:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' });
           item.innerHTML = `<img src="${p.img}" alt="progress ${esc(p.date)}" /><div class="pg-date">${dlabel}</div><button class="pg-del" type="button" aria-label="Delete">×</button>`;
           item.querySelector('img').addEventListener('click', () => {
-            preview.src = p.img; preview.style.display = 'block'; analyzeBtn.style.display = '';
+            preview.src = p.img; preview.style.display = 'block'; enableAnalyzeBtn();
             preview.scrollIntoView({ behavior: 'smooth', block: 'center' });
           });
           item.querySelector('.pg-del').addEventListener('click', (e) => {
@@ -3990,7 +4119,7 @@
           reader.onload = async () => {
             preview.src = reader.result;
             preview.style.display = 'block';
-            analyzeBtn.style.display = '';
+            enableAnalyzeBtn();
             await saveToTimeline(reader.result);
             showToast('Progress photo saved 📸');
           };
@@ -4573,10 +4702,11 @@
 
     async function startBarcodeScanner() {
       if (!navigator.mediaDevices?.getUserMedia) {
-        $('barcodeFallbackInput').click(); return;
+        $('barcodeFallbackInput')?.click(); return;
       }
-      const modal = $('barcodeModal'); modal.classList.add('open');
-      const video = $('barcodeVideo');
+      const modal = $('barcodeModal'), video = $('barcodeVideo');
+      if (!modal || !video) { $('barcodeFallbackInput')?.click(); return; }
+      modal.classList.add('open');
 
       const loaded = await loadZXing();
       if (!loaded) { closeBarcodeScanner(); $('barcodeFallbackInput').click(); return; }
@@ -4610,16 +4740,29 @@
 
     async function handleBarcodeFound(barcode) {
       haptic([30, 60]);
-      $('foodEstimate').classList.add('open');
-      $('foodLoading').style.display = 'flex';
-      $('foodEstimateInner').style.display = 'none';
-      $('foodEstimate').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      $('foodEstimate')?.classList.add('open');
+      $('foodLoading') && ($('foodLoading').style.display = 'flex');
+      $('foodEstimateInner') && ($('foodEstimateInner').style.display = 'none');
+      $('foodEstimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       try {
         const data = await lookupBarcode(barcode);
-        if (!data) throw new Error(`Barcode ${barcode} not in database — try Describe instead`);
+        if (!data) { barcodeNotFound(barcode); return; }
         showEstimate(data, null, null);
       } catch (e) {
-        showEstimate({ items: [], totals: {}, confidence: 'low', note: e.message }, null, null);
+        barcodeNotFound(barcode);
+      }
+    }
+
+    // Not in the food database → guide the user straight into the Describe flow.
+    function barcodeNotFound(barcode) {
+      $('foodEstimate')?.classList.remove('open');
+      showToast(`Barcode not found — describe it instead`);
+      const row = $('describeRow');
+      if (row) {
+        row.style.display = 'block';
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const input = $('describeInput');
+        if (input) { input.placeholder = 'e.g. the product you just scanned, with brand + size'; input.focus(); }
       }
     }
 
@@ -4650,7 +4793,7 @@
 
     (function setupFood() {
       /* ── Inline goal editor ── */
-      $('saveGoalsBtn').addEventListener('click', async () => {
+      $('saveGoalsBtn')?.addEventListener('click', async () => {
         const calVal = parseInt($('goalCalInput').value, 10);
         const protVal = parseInt($('goalProtInput').value, 10);
         if (!calVal && !protVal) { $('goalsSaveHint').textContent = 'Enter at least one value.'; return; }
@@ -4729,7 +4872,7 @@
     ============================================================ */
     let memories = [];
     function renderMemories() {
-      const el = $('memList');
+      const el = $('memList'); if (!el) return;
       if (!memories.length) { el.innerHTML = '<div class="empty-card" style="border-style:dashed"><div class="empty-card-icon">🧠</div><div class="empty-card-title">Omni has a blank slate</div><div class="empty-card-sub">Pin facts — PRs, injuries, preferences, schedule</div></div>'; return; }
       el.innerHTML = '';
       memories.forEach(m => {
@@ -5068,8 +5211,98 @@
       if (supa) supa.auth.getUser().then(({ data }) => {
         const em = data?.user?.email;
         if (em) setText('accountEmail', em);
-        if (em === 'demo@fernfit.app') showDemoBanner();
+        if (em === 'demo@fernfit.app') enterDemoMode();
       }).catch(() => {});
+    }
+
+    async function enterDemoMode() {
+      showDemoBanner();
+      if (window.renderDemoWhoop) { try { window.renderDemoWhoop(); } catch {} }
+      // Seed realistic data once (idempotent — skips if a profile name already exists)
+      try {
+        const { profile } = await apiGet('/api/profile');
+        if (profile && profile.name) return;
+      } catch {}
+      try { await seedDemoData(); } catch (e) { console.error('[demo-seed]', e); }
+    }
+
+    async function seedDemoData() {
+      const dayStr = (back) => { const d = new Date(); d.setDate(d.getDate() - back); return d.toISOString().slice(0, 10); };
+
+      // 1) Profile
+      await apiPost('/api/profile', {
+        name: 'Alex Rivera', age: 29, sex: 'male',
+        height_cm: 180, weight_kg: 82, goal_weight_kg: 86,
+        primary_goal: 'Build lean muscle', dietary_style: 'High protein',
+        supplements: 'Creatine 5g, whey, vitamin D3, omega-3',
+        injuries: 'Right shoulder — keep overhead pressing moderate',
+        calorie_goal: 2900, protein_goal: 200, coach_style: 'honest',
+      });
+
+      // 2) 14 days of daily logs for trends (recovery, hrv, rhr, weight bulk trend)
+      const recArc = [82, 75, 61, 70, 88, 79, 66, 84, 72, 58, 90, 81, 74, 69];
+      const logJobs = recArc.map((rec, i) => apiPost('/api/log', {
+        date: dayStr(i),
+        recovery_score: rec,
+        hrv: Math.round(45 + rec * 0.32),
+        rhr: Math.round(60 - rec * 0.14),
+        strain: +(8 + (100 - rec) * 0.09).toFixed(1),
+        sleep_perf: Math.min(98, Math.round(rec * 0.9 + 14)),
+        weight_kg: +(82 + i * 0.06).toFixed(1),
+        mood: rec > 75 ? 5 : rec > 60 ? 4 : 3,
+        energy: rec > 75 ? 5 : rec > 60 ? 4 : 3,
+      }).catch(() => {}));
+
+      // 3) Meals — today + last 2 days
+      const meals = [
+        { d: 0, description: '4 eggs, oats with berries, black coffee', calories: 620, protein: 38, carbs: 65, fat: 22 },
+        { d: 0, description: 'Chicken rice bowl, avocado, olive oil', calories: 780, protein: 52, carbs: 70, fat: 28 },
+        { d: 0, description: 'Greek yogurt, honey, almonds', calories: 320, protein: 24, carbs: 30, fat: 12 },
+        { d: 1, description: 'Protein shake, banana, peanut butter', calories: 450, protein: 40, carbs: 45, fat: 14 },
+        { d: 1, description: 'Salmon, sweet potato, broccoli', calories: 690, protein: 46, carbs: 55, fat: 26 },
+        { d: 2, description: 'Steak, white rice, mixed greens', calories: 820, protein: 58, carbs: 60, fat: 34 },
+      ];
+      const mealJobs = meals.map(m => apiPost('/api/meals', { date: dayStr(m.d), description: m.description, calories: m.calories, protein: m.protein, carbs: m.carbs, fat: m.fat }).catch(() => {}));
+
+      // 4) Workouts — last 3 sessions
+      const workouts = [
+        { d: 0, focus: 'Push — chest & shoulders', notes: 'Felt strong, +5lb on bench', exercises: [
+          { name: 'Bench Press', sets: [{ weight: 185, reps: 8 }, { weight: 185, reps: 8 }, { weight: 195, reps: 6 }] },
+          { name: 'Incline DB Press', sets: [{ weight: 65, reps: 10 }, { weight: 65, reps: 9 }] },
+          { name: 'Cable Fly', sets: [{ weight: 30, reps: 12 }, { weight: 30, reps: 12 }] },
+        ] },
+        { d: 1, focus: 'Pull — back & biceps', notes: 'Good mind-muscle on rows', exercises: [
+          { name: 'Deadlift', sets: [{ weight: 275, reps: 5 }, { weight: 295, reps: 3 }] },
+          { name: 'Pull-ups', sets: [{ weight: null, reps: 10 }, { weight: null, reps: 8 }] },
+          { name: 'Barbell Row', sets: [{ weight: 135, reps: 10 }, { weight: 135, reps: 10 }] },
+        ] },
+        { d: 3, focus: 'Legs', notes: 'Quads fried', exercises: [
+          { name: 'Squat', sets: [{ weight: 225, reps: 6 }, { weight: 225, reps: 6 }, { weight: 245, reps: 4 }] },
+          { name: 'Romanian Deadlift', sets: [{ weight: 185, reps: 10 }, { weight: 185, reps: 10 }] },
+          { name: 'Leg Press', sets: [{ weight: 360, reps: 12 }] },
+        ] },
+      ];
+      const woJobs = workouts.map(w => apiPost('/api/workouts', { date: dayStr(w.d), focus: w.focus, exercises: w.exercises, notes: w.notes }).catch(() => {}));
+
+      // 5) Coach memories
+      const mems = [
+        'Training for a hypertrophy block — building lean muscle, lean bulk at ~2900 cal',
+        'Right shoulder is a bit cranky — keep heavy overhead pressing in check',
+        'Prefers direct, no-fluff coaching with specific numbers',
+        'Lactose is fine; uses whey and Greek yogurt daily',
+      ];
+      const memJobs = mems.map(c => apiPost('/api/memory', { content: c }).catch(() => {}));
+
+      await Promise.all([...logJobs, ...mealJobs, ...woJobs, ...memJobs]);
+
+      // Refresh data loaders (not the listener binders) now that data exists
+      try { await loadProfile(); } catch {}
+      try { loadHello(); } catch {}
+      try { loadLog(); } catch {}
+      try { loadFood(); } catch {}
+      try { await loadTrends(); } catch {}
+      try { await loadMemories(); } catch {}
+      showToast('Demo data loaded ✓');
     }
     function showDemoBanner() {
       if ($('demoBanner')) return;
