@@ -3157,11 +3157,16 @@
     // 'talk'  = mic fills input, user sends manually, no TTS back
     // 'voice' = mic + auto-sends after speaking, Omni talks back (TTS)
     let chatMode = lsGet('fernfit_chat_mode', 'type');
-    let _currentAudio = null, _ttsQueue = [], _ttsPlaying = false;
+    let _currentAudio = null, _ttsQueue = [], _ttsPlaying = false, _onTtsDone = null;
+    let _audioCtx = null;
+    function _getAudioCtx() {
+      if (!_audioCtx || _audioCtx.state === 'closed') _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+      return _audioCtx;
+    }
 
     function stopSpeaking() {
-      _ttsQueue = [];
-      _ttsPlaying = false;
+      _ttsQueue = []; _ttsPlaying = false; _onTtsDone = null;
       if (_currentAudio) { _currentAudio.pause(); _currentAudio.src = ''; _currentAudio = null; }
       const dot = $('voiceSpeakingDot');
       if (dot) dot.style.display = 'none';
@@ -3169,26 +3174,50 @@
     }
 
     async function _ttsPlayNext() {
-      if (!_ttsQueue.length) { _ttsPlaying = false; _speaking = false; const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'none'; if (window._restartMicIfHandsFree) window._restartMicIfHandsFree(); return; }
+      if (!_ttsQueue.length) {
+        _ttsPlaying = false; _speaking = false;
+        const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'none';
+        if (_onTtsDone) { const cb = _onTtsDone; _onTtsDone = null; cb(); }
+        if (window._restartMicIfHandsFree) window._restartMicIfHandsFree();
+        return;
+      }
       _ttsPlaying = true; _speaking = true;
       const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'flex';
-      const blob = await _ttsQueue.shift();
-      if (!blob || chatMode !== 'voice') { _ttsPlayNext(); return; }
+      const { p, onReveal } = _ttsQueue.shift();
+      const blob = await p;
+      if (!blob || chatMode !== 'voice') { if (onReveal) onReveal(); _ttsPlayNext(); return; }
+      if (onReveal) onReveal(); // show subtitle text exactly when audio starts
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      _currentAudio = audio;
-      audio.onended = audio.onerror = () => { URL.revokeObjectURL(url); _currentAudio = null; _ttsPlayNext(); };
-      audio.play().catch(() => _ttsPlayNext());
+      try {
+        const ctx = _getAudioCtx();
+        const gain = ctx.createGain();
+        gain.gain.value = 2.8; // amplify beyond system volume cap
+        gain.connect(ctx.destination);
+        const audio = new Audio(url);
+        audio.crossOrigin = 'anonymous';
+        const src = ctx.createMediaElementSource(audio);
+        src.connect(gain);
+        _currentAudio = audio;
+        audio.onended = audio.onerror = () => { URL.revokeObjectURL(url); _currentAudio = null; _ttsPlayNext(); };
+        audio.play().catch(() => _ttsPlayNext());
+      } catch {
+        // Fallback: plain audio at max volume
+        const audio = new Audio(url);
+        audio.volume = 1;
+        _currentAudio = audio;
+        audio.onended = audio.onerror = () => { URL.revokeObjectURL(url); _currentAudio = null; _ttsPlayNext(); };
+        audio.play().catch(() => _ttsPlayNext());
+      }
     }
 
-    function ttsEnqueue(sentence) {
+    function ttsEnqueue(sentence, onReveal) {
       if (chatMode !== 'voice' || !sentence.trim()) return;
       const p = fetch('/api/tts', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ text: sentence.trim().slice(0, 500), voice: 'echo', speed: 1.1 }),
       }).then(r => r.ok ? r.blob() : null).catch(() => null);
-      _ttsQueue.push(p);
+      _ttsQueue.push({ p, onReveal: onReveal || null });
       if (!_ttsPlaying) _ttsPlayNext();
     }
     function applyChatMode(mode) {
@@ -3304,11 +3333,21 @@
       typingEl.remove();
       const bubble = addBubble('bot', '');
       const mdDiv = bubble.querySelector('.md');
+      const isVoice = chatMode === 'voice';
       let fullText = '';
       const cursor = document.createElement('span');
       cursor.className = 'stream-cursor';
       cursor.textContent = '▌';
       mdDiv.appendChild(cursor);
+      // Subtitle reveal state (voice mode only)
+      let subtitleText = '';
+      const revealChunk = (chunk) => {
+        const clean = chunk.replace(/###GOALS###.*?###GOALS###/gs, '').replace(/###REMEMBER###.*?###REMEMBER###/gs, '').trim();
+        if (!clean) return;
+        subtitleText += (subtitleText ? ' ' : '') + clean;
+        mdDiv.textContent = subtitleText;
+        $('chatLog').scrollTop = $('chatLog').scrollHeight;
+      };
       const reader = r.body.getReader();
       const decoder = new TextDecoder();
       let buf = '', ttsBuf = '', ttsSentences = [];
@@ -3329,14 +3368,16 @@
               if (ev.text) {
                 fullText += ev.text;
                 ttsBuf += ev.text;
-                // Collect complete sentences; send to TTS in pairs for natural prosody
                 let m;
                 while ((m = ttsBuf.match(/^(.*?[.!?])\s+/s)) !== null) {
                   ttsSentences.push(m[1]);
                   ttsBuf = ttsBuf.slice(m[0].length);
-                  if (ttsSentences.length >= 2) { ttsEnqueue(ttsSentences.join(' ')); ttsSentences = []; }
+                  if (ttsSentences.length >= 2) {
+                    const chunk = ttsSentences.join(' ');
+                    ttsEnqueue(chunk, isVoice ? () => revealChunk(chunk) : null);
+                    ttsSentences = [];
+                  }
                 }
-                // Don't show raw text while streaming — just keep the cursor visible
               }
             } catch {}
           }
@@ -3344,17 +3385,26 @@
       } finally {
         cursor.remove();
         const remaining = [...ttsSentences, ttsBuf].filter(s => s.trim()).join(' ').trim();
-        if (remaining) ttsEnqueue(remaining);
+        if (remaining) ttsEnqueue(remaining, isVoice ? () => revealChunk(remaining) : null);
       }
       const goalsMatch = fullText.match(/###GOALS###({.*?})###GOALS###/s);
       const rememberMatch = fullText.match(/###REMEMBER###({.*?})###REMEMBER###/s);
       const cleanReply = fullText.replace(/\n?###GOALS###.*?###GOALS###/s, '').replace(/\n?###REMEMBER###.*?###REMEMBER###/s, '').trim();
-      mdDiv.innerHTML = md(cleanReply);
-      addReplyActions(bubble, cleanReply, 'chat');
-      if (rememberMatch) { try { const fact = JSON.parse(rememberMatch[1]).fact; if (fact?.trim()) { const card = document.createElement('div'); card.className = 'remember-card'; card.innerHTML = `<div class="remember-q">Want me to remember this?</div><div class="remember-fact">"${esc(fact.trim())}"</div><div class="remember-actions"><button class="btn btn-ghost remember-no" type="button">No thanks</button><button class="btn btn-primary remember-yes" type="button">Yes, remember it</button></div>`; mdDiv.appendChild(card); card.querySelector('.remember-yes').addEventListener('click', () => { addMemory(fact.trim()); card.innerHTML = '<div class="remember-q" style="color:var(--accent)">📌 Got it.</div>'; }); card.querySelector('.remember-no').addEventListener('click', () => card.remove()); } } catch {} }
-      if (goalsMatch) { try { const goals = JSON.parse(goalsMatch[1]); const card = document.createElement('div'); card.className = 'panel'; card.style.cssText = 'margin-top:12px;border:1px solid rgba(200,40,40,0.3);background:rgba(200,40,40,0.05)'; card.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:10px">Recommended goals</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-bottom:14px"><div><div style="font-size:20px;font-weight:800;color:var(--accent)">${goals.calories}</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">cal</div></div><div><div style="font-size:20px;font-weight:800">${goals.protein}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">protein</div></div><div><div style="font-size:20px;font-weight:800">${goals.carbs}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">carbs</div></div><div><div style="font-size:20px;font-weight:800">${goals.fat}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">fat</div></div></div><button class="btn btn-primary btn-block" id="applyGoalsBtn" type="button">Apply these goals →</button>`; mdDiv.appendChild(card); card.querySelector('#applyGoalsBtn').addEventListener('click', async () => { card.querySelector('#applyGoalsBtn').textContent = 'Saving…'; card.querySelector('#applyGoalsBtn').disabled = true; const updates = { calorie_goal: goals.calories, protein_goal: goals.protein }; cachedProfile = { ...(cachedProfile || {}), ...updates }; lsSet('fernfit_profile', cachedProfile); const pfCalEl = $('pfCal'), pfProtEl = $('pfProtein'); if (pfCalEl) pfCalEl.value = goals.calories; if (pfProtEl) pfProtEl.value = goals.protein; try { await apiPost('/api/profile', updates); } catch {} renderFoodTotals(); showToast('Goals updated ✓'); card.querySelector('#applyGoalsBtn').textContent = '✓ Applied'; }); } catch {} }
       if (text) chatHistory.push({ role: 'user', content: text });
       chatHistory.push({ role: 'assistant', content: cleanReply });
+      const renderFinal = () => {
+        mdDiv.innerHTML = md(cleanReply);
+        addReplyActions(bubble, cleanReply, 'chat');
+        if (rememberMatch) { try { const fact = JSON.parse(rememberMatch[1]).fact; if (fact?.trim()) { const card = document.createElement('div'); card.className = 'remember-card'; card.innerHTML = `<div class="remember-q">Want me to remember this?</div><div class="remember-fact">"${esc(fact.trim())}"</div><div class="remember-actions"><button class="btn btn-ghost remember-no" type="button">No thanks</button><button class="btn btn-primary remember-yes" type="button">Yes, remember it</button></div>`; mdDiv.appendChild(card); card.querySelector('.remember-yes').addEventListener('click', () => { addMemory(fact.trim()); card.innerHTML = '<div class="remember-q" style="color:var(--accent)">📌 Got it.</div>'; }); card.querySelector('.remember-no').addEventListener('click', () => card.remove()); } } catch {} }
+        if (goalsMatch) { try { const goals = JSON.parse(goalsMatch[1]); const card = document.createElement('div'); card.className = 'panel'; card.style.cssText = 'margin-top:12px;border:1px solid rgba(200,40,40,0.3);background:rgba(200,40,40,0.05)'; card.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:10px">Recommended goals</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-bottom:14px"><div><div style="font-size:20px;font-weight:800;color:var(--accent)">${goals.calories}</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">cal</div></div><div><div style="font-size:20px;font-weight:800">${goals.protein}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">protein</div></div><div><div style="font-size:20px;font-weight:800">${goals.carbs}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">carbs</div></div><div><div style="font-size:20px;font-weight:800">${goals.fat}g</div><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em">fat</div></div></div><button class="btn btn-primary btn-block" id="applyGoalsBtn" type="button">Apply these goals →</button>`; mdDiv.appendChild(card); card.querySelector('#applyGoalsBtn').addEventListener('click', async () => { card.querySelector('#applyGoalsBtn').textContent = 'Saving…'; card.querySelector('#applyGoalsBtn').disabled = true; const updates = { calorie_goal: goals.calories, protein_goal: goals.protein }; cachedProfile = { ...(cachedProfile || {}), ...updates }; lsSet('fernfit_profile', cachedProfile); const pfCalEl = $('pfCal'), pfProtEl = $('pfProtein'); if (pfCalEl) pfCalEl.value = goals.calories; if (pfProtEl) pfProtEl.value = goals.protein; try { await apiPost('/api/profile', updates); } catch {} renderFoodTotals(); showToast('Goals updated ✓'); card.querySelector('#applyGoalsBtn').textContent = '✓ Applied'; }); } catch {} }
+      };
+      if (isVoice) {
+        // Render full markdown after all TTS finishes (subtitles shown during playback)
+        _onTtsDone = renderFinal;
+        if (!_ttsPlaying && !_ttsQueue.length) { _onTtsDone = null; renderFinal(); }
+      } else {
+        renderFinal();
+      }
     }
     async function sendChat(text, mode) {
       if (!text && !mode) return;
