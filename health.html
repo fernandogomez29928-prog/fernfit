@@ -3591,6 +3591,15 @@
               if (ev.error) { cursor.remove(); mdDiv.innerHTML = '<span style="color:var(--danger)">' + esc(ev.error) + '</span>'; return; }
               if (ev.text) {
                 fullText += ev.text;
+                if (!isVoice) {
+                  // Live token-by-token reveal (plain text; markdown rendered at the end).
+                  // Everything before the first ### marker is the visible reply.
+                  const cut = fullText.indexOf('###');
+                  cursor.remove();
+                  mdDiv.textContent = cut === -1 ? fullText : fullText.slice(0, cut);
+                  mdDiv.appendChild(cursor);
+                  $('chatLog').scrollTop = $('chatLog').scrollHeight;
+                }
                 ttsBuf += ev.text;
                 let m;
                 while ((m = ttsBuf.match(/^(.*?[.!?])\s+/s)) !== null) {
