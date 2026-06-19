@@ -137,6 +137,9 @@ create index if not exists idx_photos_date     on physique_photos (user_id, phot
 create index if not exists idx_plans_kind      on plans (user_id, kind, created_at desc);
 create index if not exists idx_memories_user    on memories (user_id, created_at desc);
 
+-- ---------- additive column migrations (safe to re-run) ----------
+alter table profiles add column if not exists coach_style text;
+
 -- ---------- lock everything down (service key bypasses RLS) ----------
 alter table profiles        enable row level security;
 alter table daily_logs      enable row level security;

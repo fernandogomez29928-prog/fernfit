@@ -62,6 +62,58 @@ Do NOT recite HRV, resting heart rate, or strain in every reply. Bring them up o
 (c) you haven't mentioned them in 7+ messages.
 In casual chat, just say "your recovery is [green/solid/low]" and move on.`;
 
+const COACH_PERSONALITIES = {
+  hype: `
+
+COACH PERSONALITY — HYPE MODE:
+You are his hype man. Match his gym energy × 2. Use exclamation points freely. Celebrate every win — "LET'S GO!", "That's elite!", "We're eating today!" Short punchy sentences. Never sound tired. Make him feel like a beast even on low-recovery days.`,
+
+  drill: `
+
+COACH PERSONALITY — DRILL SERGEANT:
+Clipped. Direct. Commands only. No encouragement fluff. "You ate 80g protein — that's not enough. Fix it." No exclamation points unless earned. Military cadence. Every response ends with one clear order. Respect him enough not to sugarcoat anything. Never say "great job" for average effort.`,
+
+  science: `
+
+COACH PERSONALITY — THE ANALYST:
+Data-first. Always explain the mechanism behind your advice — not just what to do, but why the physiology works that way. Cite specific numbers, % improvements, timeframes. Reference adaptations, hormonal responses, metabolic processes. The user is smart; treat him like it. Keep it readable but never dumb it down.`,
+
+  chill: `
+
+COACH PERSONALITY — CHILL TRAINER:
+You're the coach who's also a friend. Zero pressure in your tone. "Yeah man", "honestly", "up to you but—" are natural. Never bark. If he's not hitting his goals, ask what's going on before pushing. Casual, warm, real. Like texting a friend who happens to know everything about fitness.`,
+};
+
+/* ── adaptive tone based on how the user writes ── */
+function getAdaptiveTone(message) {
+  if (!message) return '';
+  const m = message.toLowerCase();
+  const words = message.trim().split(/\s+/).length;
+  const hints = [];
+  if (/fuck|damn|ugh|wtf|pissed|frustrated|not working|doesn't work|nothing works/.test(m))
+    hints.push('User seems frustrated — cut to the fix, no preamble.');
+  else if (/let'?s go|yoo+|!{2,}|fire\b|sick bro|hyped/.test(m))
+    hints.push('User is pumped — match the energy, keep it moving.');
+  if (words <= 5)
+    hints.push('Short message — keep reply short (2-3 sentences max unless detail was asked).');
+  return hints.length ? '\n\n[TONE: ' + hints.join(' ') + ']' : '';
+}
+
+/* ── lightweight context routing — flags the topic so Claude focuses ── */
+function getChatContextHint(message) {
+  if (!message) return '';
+  const m = message.toLowerCase();
+  if (/\b(eat|meal|food|diet|recipe|calorie|protein|carb|macro)\b/.test(m))
+    return '\n(Nutrition context — focus on food, macros, and meal choices.)';
+  if (/\b(workout|lift|exercise|train|sets?|reps?|split|program|gym)\b/.test(m))
+    return '\n(Training context — focus on session design, progressive overload, his program.)';
+  if (/\b(recover|sleep|hrv|sore|tired|rest|hurt|pain|injury|peptide)\b/.test(m))
+    return '\n(Recovery context — focus on rest, rehab, peptides, protecting his numbers.)';
+  if (/\b(supplement|creatine|omega|vitamin|dose|timing|stack)\b/.test(m))
+    return '\n(Supplement context — dosing, timing, interactions with his goal.)';
+  return '';
+}
+
 const SUPP_INFO = {
   'creatine':     'improves power output and muscle ATP resynthesis; takes ~4 wks to saturate',
   'vitamin d':    'supports testosterone, bone density, immune function; best taken with fat',
@@ -558,7 +610,8 @@ export default async function handler(req, res) {
     const context = fmt({ profile, log, whoop: b.whoop, recent, body: b.body || null, meals, memories, program, workouts });
     const userTurn = mode === 'chat' ? (b.message || 'Give me a quick read on my day.') : instruction;
     const userName = profile?.name?.split(' ')[0] || 'Fernando';
-    textContent = `${context}\n\n---\n\n${mode === 'chat' ? instruction + '\n\n' + userName + ': ' + userTurn : userTurn}`;
+    const chatExtra = mode === 'chat' ? getChatContextHint(b.message) + getAdaptiveTone(b.message) : '';
+    textContent = `${context}\n\n---\n\n${mode === 'chat' ? instruction + chatExtra + '\n\n' + userName + ': ' + userTurn : userTurn}`;
   }
 
   // Build messages (chat history only matters for chat).
@@ -594,7 +647,8 @@ export default async function handler(req, res) {
   }
 
   const maxTokens = mode === 'photo' ? 2000 : isFood ? 700 : mode === 'one_liner' ? 60 : 1500;
-  const systemPrompt = isFood ? 'You are a precise nutrition estimator. Output only what is asked.' : BASE_SYSTEM;
+  const personalityBlock = !isFood && profile ? (COACH_PERSONALITIES[profile.coach_style] || '') : '';
+  const systemPrompt = isFood ? 'You are a precise nutrition estimator. Output only what is asked.' : BASE_SYSTEM + personalityBlock;
   const wantsStream = b.stream === true && mode === 'chat';
 
   try {

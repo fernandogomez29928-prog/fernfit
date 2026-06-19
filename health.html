@@ -2152,6 +2152,18 @@
         <div class="eyebrow" style="margin-top:20px;margin-bottom:12px;">Injuries &amp; Limitations</div>
         <div class="field"><textarea id="pfInjuries" placeholder="Anything to train around…" style="background:rgba(242,192,99,0.05);border:1px solid rgba(242,192,99,0.16);color:#e8d9bc;"></textarea></div>
 
+        <!-- Coach Style -->
+        <div class="eyebrow" style="margin-top:24px;margin-bottom:12px;">How should your coach talk?</div>
+        <input type="hidden" id="pfCoachStyle" />
+        <div class="pf-pill-group" id="pfCoachStylePills">
+          <button class="pf-pill" data-val="honest" type="button">Real Talk</button>
+          <button class="pf-pill" data-val="hype" type="button">Hype Mode</button>
+          <button class="pf-pill" data-val="drill" type="button">Drill Sergeant</button>
+          <button class="pf-pill" data-val="science" type="button">Science Nerd</button>
+          <button class="pf-pill" data-val="chill" type="button">Chill Vibes</button>
+        </div>
+        <p id="coachStyleDesc" style="font-size:11px;color:var(--text-tertiary);margin-top:8px;min-height:16px;"></p>
+
         <button class="btn btn-primary btn-block" id="saveProfileBtn" type="button" style="margin-top:20px;">Save profile</button>
         <div class="save-hint" id="profileHint"></div>
 
@@ -3208,7 +3220,18 @@
     /* ============================================================
        PROFILE
     ============================================================ */
-    const PF = { pfName:'name', pfAge:'age', pfSex:'sex', pfGoal:'primary_goal', pfDiet:'dietary_style', pfCal:'calorie_goal', pfProtein:'protein_goal', pfSupps:'supplements', pfPeptides:'peptides', pfInjuries:'injuries' };
+    const PF = { pfName:'name', pfAge:'age', pfSex:'sex', pfGoal:'primary_goal', pfDiet:'dietary_style', pfCal:'calorie_goal', pfProtein:'protein_goal', pfSupps:'supplements', pfPeptides:'peptides', pfInjuries:'injuries', pfCoachStyle:'coach_style' };
+
+    const COACH_STYLE_DESCS = {
+      honest: 'Direct. Real talk. Matches your energy.',
+      hype: 'High energy. Celebrates every win. Pushes hard.',
+      drill: 'Blunt. Commands only. No sugarcoating.',
+      science: 'Data-first. Explains the why behind every call.',
+      chill: 'Casual. Zero pressure. Like a friend who knows fitness.',
+    };
+    function updateCoachStyleDesc(val) {
+      const d = $('coachStyleDesc'); if (d) d.textContent = COACH_STYLE_DESCS[val] || '';
+    }
 
     function syncPills(groupId, val) {
       const group = $(groupId);
@@ -3261,6 +3284,8 @@
       syncPills('pfSexPills', p.sex || '');
       syncPills('pfGoalPills', p.primary_goal || '');
       syncPills('pfDietPills', p.dietary_style || '');
+      syncPills('pfCoachStylePills', p.coach_style || 'honest');
+      updateCoachStyleDesc(p.coach_style || 'honest');
       cachedProfile = p;
       updateProfileProgress(p);
     }
@@ -3268,6 +3293,10 @@
     initPillGroup('pfSexPills', 'pfSex');
     initPillGroup('pfGoalPills', 'pfGoal');
     initPillGroup('pfDietPills', 'pfDiet');
+    initPillGroup('pfCoachStylePills', 'pfCoachStyle');
+    $('pfCoachStylePills').querySelectorAll('.pf-pill').forEach(function(btn) {
+      btn.addEventListener('click', function() { updateCoachStyleDesc(btn.getAttribute('data-val')); });
+    });
     async function loadProfile() {
       try { const { profile } = await apiGet('/api/profile'); fillProfile(profile); }
       catch (e) { fillProfile(lsGet('fernfit_profile', null)); }

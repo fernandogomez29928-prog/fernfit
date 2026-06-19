@@ -8,7 +8,7 @@ import { cors, parseBody, dbReady, dbSelect, dbUpsert, getAuthUser } from './_db
 const FIELDS = [
   'name', 'age', 'sex', 'height_cm', 'weight_kg', 'goal_weight_kg',
   'primary_goal', 'dietary_style', 'peptides', 'supplements',
-  'injuries', 'calorie_goal', 'protein_goal',
+  'injuries', 'calorie_goal', 'protein_goal', 'coach_style',
 ];
 
 export default async function handler(req, res) {
