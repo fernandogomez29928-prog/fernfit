@@ -2418,7 +2418,7 @@
             if (cal) cal.style.display = age < 14 ? 'flex' : 'none';
           }
           /* Today's Intelligence one-liner */
-          loadIntelCard();
+          if (window.loadIntelCard) window.loadIntelCard();
         }
 
         /* Sleep */
@@ -3314,6 +3314,7 @@
       });
     }
     window.refreshCoachSuggestions = refreshCoachSuggestions; // expose to script 1 IIFE
+    window.loadIntelCard = loadIntelCard; // expose to script 1 IIFE
 
     /* ── Haptic feedback helper ── */
     const haptic = (pattern) => { if (navigator.vibrate) navigator.vibrate(pattern); };
