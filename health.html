@@ -3386,7 +3386,7 @@
     // 'type'  = keyboard only, no mic, no TTS
     // 'talk'  = mic fills input, user sends manually, no TTS back
     // 'voice' = mic + auto-sends after speaking, Omni talks back (TTS)
-    let chatMode = lsGet('fernfit_chat_mode', 'type');
+    let chatMode = lsGet('fernfit_chat_mode', 'voice');
     let _currentAudio = null, _ttsQueue = [], _ttsPlaying = false, _onTtsDone = null;
     let _speaking = false;
     let _audioCtx = null;
@@ -3459,7 +3459,7 @@
       if (mic) mic.style.display = (mode === 'talk' || mode === 'voice') ? '' : 'none';
       if (mode !== 'voice') stopSpeaking();
     }
-    document.querySelectorAll('.chat-mode-btn').forEach(b => b.addEventListener('click', () => applyChatMode(b.dataset.mode)));
+    document.querySelectorAll('.chat-mode-btn').forEach(b => b.addEventListener('click', () => { _getAudioCtx(); applyChatMode(b.dataset.mode); }));
     applyChatMode(chatMode); /* restore saved mode on load */
 
     async function speakText(text) {
@@ -3488,7 +3488,13 @@
         _speaking = true;
         if (dot) dot.style.display = 'flex';
         audio.onended = audio.onerror = () => { _speaking = false; if (dot) dot.style.display = 'none'; URL.revokeObjectURL(url); _currentAudio = null; };
-        audio.play();
+        try {
+          const ctx = _getAudioCtx();
+          const gain = ctx.createGain(); gain.gain.value = 2.8; gain.connect(ctx.destination);
+          audio.crossOrigin = 'anonymous';
+          ctx.createMediaElementSource(audio).connect(gain);
+        } catch {}
+        audio.play().catch(() => {});
       } catch (err) {
         console.warn('TTS error:', err);
         if (dot) dot.style.display = 'none';
@@ -3773,6 +3779,7 @@
     chatInput.addEventListener('input', () => { chatInput.style.height = 'auto'; chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px'; });
     chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chatSendBtn').click(); } });
     $('chatSendBtn').addEventListener('click', () => {
+      _getAudioCtx(); // unlock AudioContext synchronously via user gesture (required on iOS)
       const text = chatInput.value.trim(); if (!text) return;
       chatInput.value = ''; chatInput.style.height = 'auto';
       sendChat(text, null);
