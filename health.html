@@ -2398,6 +2398,84 @@
     }
     document.getElementById('whoopShareBtn').addEventListener('click', shareRecoveryCard);
 
+    /* ── "My coach said…" quote card (shared with Script 2 reply actions) ── */
+    async function buildQuoteCard(quote) {
+      const W = 1080, H = 1080;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const ctx = c.getContext('2d');
+      const sans = 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+      const bg = ctx.createLinearGradient(0, 0, W, H);
+      bg.addColorStop(0, '#141416'); bg.addColorStop(1, '#050506');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      const vg = ctx.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, 760);
+      vg.addColorStop(0, 'rgba(157,21,21,0.16)'); vg.addColorStop(1, 'rgba(157,21,21,0)');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+      ctx.textAlign = 'center';
+      ctx.font = '800 56px ' + sans;
+      ctx.fillStyle = '#E0303C';
+      ctx.fillText('OMNI', W / 2, 130);
+
+      // Big opening quote mark
+      ctx.fillStyle = 'rgba(224,48,60,0.35)';
+      ctx.font = '800 180px Georgia, serif';
+      ctx.fillText('“', W / 2, 320);
+
+      // Wrapped quote
+      const clean = (quote || '').replace(/\s+/g, ' ').trim().slice(0, 260);
+      ctx.fillStyle = '#F2EAEA';
+      ctx.font = '600 46px ' + sans;
+      const maxW = W - 200;
+      const words = clean.split(' ');
+      const lines = []; let line = '';
+      for (const word of words) {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = word; }
+        else line = test;
+      }
+      if (line) lines.push(line);
+      const lh = 62, startY = H / 2 - (lines.length - 1) * lh / 2 - 20;
+      lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
+
+      // Attribution
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '700 28px ' + sans;
+      ctx.fillText('— OMNI · your AI fitness coach', W / 2, H - 130);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.font = '600 22px ' + sans;
+      const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      ctx.fillText(today, W / 2, H - 90);
+
+      return await new Promise(res => c.toBlob(res, 'image/png'));
+    }
+    async function shareCoachQuote(quote) {
+      const toast = window.showToast || (() => {});
+      const text = (quote || '').replace(/\s+/g, ' ').trim();
+      if (!text) { toast('Nothing to share'); return; }
+      try {
+        const blob = await buildQuoteCard(text);
+        if (!blob) { toast('Could not build card'); return; }
+        const file = new File([blob], 'omni-coach.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'My OMNI coach', text: 'From my OMNI coach' });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'omni-coach.png';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          toast('Card saved 📸');
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        console.warn('[share-quote]', err);
+        toast('Share failed');
+      }
+    }
+    window.shareCoachQuote = shareCoachQuote; // used by Script 2 reply actions
+
     /* ── Helpers ── */
     function fmtMins(ms) {
       const m = Math.round(ms / 60000);
@@ -4036,6 +4114,12 @@
         if (v && v.trim()) { addMemory(v.trim()); pin.textContent = '✓ Pinned'; pin.disabled = true; }
       });
       bar.appendChild(pin);
+      const share = document.createElement('button'); share.className = 'reply-act'; share.type = 'button'; share.textContent = '📤 Share';
+      share.addEventListener('click', () => {
+        const q = stripMd(reply).replace(/\s+/g, ' ').trim();
+        if (window.shareCoachQuote) window.shareCoachQuote(q);
+      });
+      bar.appendChild(share);
       if (mode === 'grocery') {
         const copy = document.createElement('button'); copy.className = 'reply-act'; copy.type = 'button'; copy.textContent = '📋 Copy list';
         copy.addEventListener('click', () => {
