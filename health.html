@@ -2245,7 +2245,10 @@
     document.getElementById('whoopRefreshBtn').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       btn.style.transform = 'rotate(180deg)';
-      try { await loadData(); } finally { setTimeout(() => btn.style.transform = '', 600); }
+      try {
+        if (!loadTokens() && window.__DEMO_WHOOP__) { window.renderDemoWhoop && window.renderDemoWhoop(); }
+        else { await loadData(); }
+      } finally { setTimeout(() => btn.style.transform = '', 600); }
     });
 
     /* ── Shareable recovery card (canvas → PNG → native share / download) ── */
@@ -3132,6 +3135,7 @@
     /* ── Demo mode: inject realistic fake WHOOP data (no real device needed) ── */
     window.renderDemoWhoop = function renderDemoWhoop() {
       try {
+        window.__DEMO_WHOOP__ = true;
         if (dEl) dEl.style.display = 'none';
         if (cEl) cEl.style.display = '';
         const cal = document.getElementById('whoopCalibrating'); if (cal) cal.style.display = 'none';
