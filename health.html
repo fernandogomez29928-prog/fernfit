@@ -3525,7 +3525,10 @@
 
     function stopSpeaking() {
       _ttsQueue = []; _ttsPlaying = false; _onTtsDone = null;
-      if (_currentAudio) { _currentAudio.pause(); _currentAudio.src = ''; _currentAudio = null; }
+      if (_currentAudio) {
+        try { typeof _currentAudio.stop === 'function' ? _currentAudio.stop() : _currentAudio.pause(); } catch {}
+        _currentAudio = null;
+      }
       const dot = $('voiceSpeakingDot');
       if (dot) dot.style.display = 'none';
       _speaking = false;
@@ -3544,27 +3547,23 @@
       const { p, onReveal } = _ttsQueue.shift();
       const blob = await p;
       if (!blob || chatMode !== 'voice') { if (onReveal) onReveal(); _ttsPlayNext(); return; }
-      if (onReveal) onReveal(); // show subtitle text exactly when audio starts
-      const url = URL.createObjectURL(blob);
+      if (onReveal) onReveal();
       try {
         const ctx = _getAudioCtx();
+        const arrayBuf = await blob.arrayBuffer();
+        const audioBuf = await ctx.decodeAudioData(arrayBuf);
         const gain = ctx.createGain();
-        gain.gain.value = 2.8; // amplify beyond system volume cap
+        gain.gain.value = 2.8;
         gain.connect(ctx.destination);
-        const audio = new Audio(url);
-        audio.crossOrigin = 'anonymous';
-        const src = ctx.createMediaElementSource(audio);
-        src.connect(gain);
-        _currentAudio = audio;
-        audio.onended = audio.onerror = () => { URL.revokeObjectURL(url); _currentAudio = null; _ttsPlayNext(); };
-        audio.play().catch(() => _ttsPlayNext());
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuf;
+        source.connect(gain);
+        _currentAudio = source;
+        source.onended = () => { _currentAudio = null; _ttsPlayNext(); };
+        source.start(0);
       } catch {
-        // Fallback: plain audio at max volume
-        const audio = new Audio(url);
-        audio.volume = 1;
-        _currentAudio = audio;
-        audio.onended = audio.onerror = () => { URL.revokeObjectURL(url); _currentAudio = null; _ttsPlayNext(); };
-        audio.play().catch(() => _ttsPlayNext());
+        _currentAudio = null;
+        _ttsPlayNext();
       }
     }
 
@@ -3597,7 +3596,6 @@
         .replace(/`[^`]*`/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
         .replace(/^\s*[-*>]\s+/gm, '').replace(/\n{2,}/g, '. ').trim();
       if (!clean) return;
-      // Speak only the first ~2 sentences to cut TTS latency — full response is in the chat
       const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
       const spoken = sentences.slice(0, 2).join(' ').trim().slice(0, 400) || clean.slice(0, 400);
       const dot = $('voiceSpeakingDot');
@@ -3607,21 +3605,20 @@
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ text: spoken, voice: 'echo', speed: 1.1 }),
         });
-        if (!r.ok) throw new Error('TTS request failed: ' + r.status);
+        if (!r.ok) throw new Error('TTS failed: ' + r.status);
         const blob = await r.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        _currentAudio = audio;
+        const ctx = _getAudioCtx();
+        const arrayBuf = await blob.arrayBuffer();
+        const audioBuf = await ctx.decodeAudioData(arrayBuf);
+        const gain = ctx.createGain(); gain.gain.value = 2.8; gain.connect(ctx.destination);
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuf;
+        source.connect(gain);
+        _currentAudio = source;
         _speaking = true;
         if (dot) dot.style.display = 'flex';
-        audio.onended = audio.onerror = () => { _speaking = false; if (dot) dot.style.display = 'none'; URL.revokeObjectURL(url); _currentAudio = null; };
-        try {
-          const ctx = _getAudioCtx();
-          const gain = ctx.createGain(); gain.gain.value = 2.8; gain.connect(ctx.destination);
-          audio.crossOrigin = 'anonymous';
-          ctx.createMediaElementSource(audio).connect(gain);
-        } catch {}
-        audio.play().catch(() => {});
+        source.onended = () => { _speaking = false; if (dot) dot.style.display = 'none'; _currentAudio = null; };
+        source.start(0);
       } catch (err) {
         console.warn('TTS error:', err);
         if (dot) dot.style.display = 'none';
