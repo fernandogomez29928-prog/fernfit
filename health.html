@@ -5462,7 +5462,11 @@
       // Seed realistic data once (idempotent — skips if a profile name already exists)
       try {
         const { profile } = await apiGet('/api/profile');
-        if (profile && profile.name) return;
+        if (profile && profile.name) {
+          _logsCache = null; _mealHistoryCache = null;
+          try { await loadTrends(); } catch {}
+          return;
+        }
       } catch {}
       try { await seedDemoData(); } catch (e) { console.error('[demo-seed]', e); }
     }
@@ -5537,6 +5541,7 @@
       await Promise.all([...logJobs, ...mealJobs, ...woJobs, ...memJobs]);
 
       // Refresh data loaders (not the listener binders) now that data exists
+      _logsCache = null; _mealHistoryCache = null;
       try { await loadProfile(); } catch {}
       try { loadHello(); } catch {}
       try { loadLog(); } catch {}
