@@ -1293,6 +1293,10 @@
         <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         Profile
       </button>
+      <button class="nav-tab" data-tab="about" id="aboutNavTab" style="display:none">
+        <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        About
+      </button>
     </div>
   </nav>
 
@@ -2185,6 +2189,45 @@
     </div>
 
    </div><!-- /page-profile -->
+
+   <!-- ===================== ABOUT TAB ===================== -->
+   <div class="page" id="page-about">
+     <div class="section-title">About</div>
+     <div class="section-sub" style="margin-bottom:24px;">The story behind the app.</div>
+
+     <div style="border-radius:16px;overflow:hidden;border:1px solid rgba(200,40,40,0.3);background:rgba(200,40,40,0.06);margin-bottom:20px;">
+       <div style="padding:20px 18px 18px;">
+         <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:rgba(200,40,40,0.8);margin-bottom:10px;">Builder</div>
+         <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">Fernando Gomez</div>
+         <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:18px;">Taught himself to code 6 weeks ago and built FERNFIT from scratch — a WHOOP-connected nutrition and AI coaching app. No CS degree. No prior coding experience. Just a goal and Claude.</div>
+         <button onclick="window.open('https://youtu.be/2G-fibPU6LY','_blank')" style="display:inline-flex;align-items:center;gap:8px;background:rgba(200,40,40,0.18);border:1px solid rgba(200,40,40,0.35);color:rgba(255,180,160,0.95);font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;letter-spacing:0.01em;width:100%;justify-content:center;">
+           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+           Watch the 60-second demo
+         </button>
+       </div>
+     </div>
+
+     <div style="border-radius:16px;border:1px solid var(--border-soft);background:rgba(255,255,255,0.02);padding:20px 18px;margin-bottom:20px;">
+       <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-quaternary);margin-bottom:12px;">What FERNFIT does</div>
+       <div style="display:flex;flex-direction:column;gap:10px;">
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);font-size:16px;margin-top:1px;">◆</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Connects to your <strong style="color:var(--text-primary);">WHOOP</strong> — pulls recovery, HRV, sleep, and strain automatically</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);font-size:16px;margin-top:1px;">◆</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Logs food by <strong style="color:var(--text-primary);">photo, description, or text</strong> — Claude estimates macros instantly</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);font-size:16px;margin-top:1px;">◆</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.5;">AI coach that <strong style="color:var(--text-primary);">remembers you</strong> — stores facts across sessions, tailors every response to your data</span></div>
+       </div>
+     </div>
+
+     <div style="border-radius:16px;border:1px solid var(--border-soft);background:rgba(255,255,255,0.02);padding:20px 18px;">
+       <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-quaternary);margin-bottom:12px;">Built with</div>
+       <div style="display:flex;flex-wrap:wrap;gap:8px;">
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Claude API</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">WHOOP API</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Supabase</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Vercel</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">OpenAI TTS</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Vanilla JS</span>
+       </div>
+     </div>
+   </div><!-- /page-about -->
 
   </main>
 
@@ -3274,7 +3317,7 @@
 
     /* ── Tabs ── */
     const tabs = document.querySelectorAll('.nav-tab');
-    const pages = { health: $('page-health'), food: $('page-food'), coach: $('page-coach'), profile: $('page-profile') };
+    const pages = { health: $('page-health'), food: $('page-food'), coach: $('page-coach'), profile: $('page-profile'), about: $('page-about') };
     let briefingLoaded = false, foodLoaded = false, memLoaded = false;
     function goTab(name) {
       tabs.forEach(x => x.classList.toggle('active', x.dataset.tab === name));
@@ -5458,6 +5501,7 @@
 
     async function enterDemoMode() {
       showDemoBanner();
+      const abt = $('aboutNavTab'); if (abt) abt.style.display = '';
       if (window.renderDemoWhoop) { try { window.renderDemoWhoop(); } catch {} }
       // Seed realistic data once (idempotent — skips if a profile name already exists)
       try {
