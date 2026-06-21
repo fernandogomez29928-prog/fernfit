@@ -5632,38 +5632,24 @@
       try { await loadMemories(); } catch {}
       showToast('Demo data loaded ✓');
     }
-    // ── Demo video modal (YouTube IFrame API, mutes at 15s) ──
-    let _ytPlayer = null, _ytMuteTimer = null;
-    function _createYTPlayer() {
-      _ytPlayer = new YT.Player('demoYTPlayer', {
-        videoId: '2G-fibPU6LY',
-        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, enablejsapi: 1 },
-        events: { onReady: function(e) { e.target.playVideo(); scheduleMute(); } }
-      });
-    }
+    // ── Demo video modal (iframe embed, mutes at 15s via src swap) ──
+    let _ytMuteTimer = null;
     function openDemoVideo() {
-      $('demoVideoModal').style.display = 'flex';
-      if (_ytPlayer && _ytPlayer.playVideo) {
-        _ytPlayer.seekTo(0); _ytPlayer.unMute(); _ytPlayer.playVideo(); scheduleMute(); return;
-      }
-      if (window.YT && window.YT.Player) {
-        _createYTPlayer();
-      } else {
-        window.onYouTubeIframeAPIReady = _createYTPlayer;
-        if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-          const s = document.createElement('script');
-          s.src = 'https://www.youtube.com/iframe_api';
-          document.head.appendChild(s);
-        }
-      }
-    }
-    function scheduleMute() {
+      const modal = $('demoVideoModal');
+      const container = $('demoYTPlayer');
+      modal.style.display = 'flex';
+      if (container.querySelector('iframe')) return;
+      container.innerHTML = '<iframe width="100%" height="100%" src="https://www.youtube.com/embed/2G-fibPU6LY?autoplay=1&rel=0&modestbranding=1" frameborder="0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';
       clearTimeout(_ytMuteTimer);
-      _ytMuteTimer = setTimeout(function() { if (_ytPlayer) _ytPlayer.mute(); }, 15000);
+      _ytMuteTimer = setTimeout(function() {
+        const el = $('demoYTPlayer');
+        if (el) el.innerHTML = '<iframe width="100%" height="100%" src="https://www.youtube.com/embed/2G-fibPU6LY?autoplay=1&mute=1&start=15&rel=0&modestbranding=1" frameborder="0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';
+      }, 15000);
     }
     function closeDemoVideo() {
       clearTimeout(_ytMuteTimer);
-      if (_ytPlayer) { _ytPlayer.pauseVideo(); _ytPlayer.unMute(); }
+      const container = $('demoYTPlayer');
+      if (container) container.innerHTML = '';
       $('demoVideoModal').style.display = 'none';
     }
     function showDemoBanner() {
