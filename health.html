@@ -5634,27 +5634,32 @@
     }
     // ── Demo video modal (YouTube IFrame API, mutes at 15s) ──
     let _ytPlayer = null, _ytMuteTimer = null;
+    function _createYTPlayer() {
+      _ytPlayer = new YT.Player('demoYTPlayer', {
+        videoId: '2G-fibPU6LY',
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, enablejsapi: 1 },
+        events: { onReady: function(e) { e.target.playVideo(); scheduleMute(); } }
+      });
+    }
     function openDemoVideo() {
-      const modal = $('demoVideoModal');
-      modal.style.display = 'flex';
-      if (_ytPlayer) { _ytPlayer.seekTo(0); _ytPlayer.unMute(); _ytPlayer.playVideo(); scheduleMute(); return; }
-      if (!window.YT) {
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
+      $('demoVideoModal').style.display = 'flex';
+      if (_ytPlayer && _ytPlayer.playVideo) {
+        _ytPlayer.seekTo(0); _ytPlayer.unMute(); _ytPlayer.playVideo(); scheduleMute(); return;
       }
-      window.onYouTubeIframeAPIReady = function() {
-        _ytPlayer = new YT.Player('demoYTPlayer', {
-          videoId: '2G-fibPU6LY',
-          playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
-          events: { onReady: (e) => { e.target.playVideo(); scheduleMute(); } }
-        });
-      };
-      if (window.YT && window.YT.Player) window.onYouTubeIframeAPIReady();
+      if (window.YT && window.YT.Player) {
+        _createYTPlayer();
+      } else {
+        window.onYouTubeIframeAPIReady = _createYTPlayer;
+        if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+          const s = document.createElement('script');
+          s.src = 'https://www.youtube.com/iframe_api';
+          document.head.appendChild(s);
+        }
+      }
     }
     function scheduleMute() {
       clearTimeout(_ytMuteTimer);
-      _ytMuteTimer = setTimeout(() => { if (_ytPlayer) _ytPlayer.mute(); }, 15000);
+      _ytMuteTimer = setTimeout(function() { if (_ytPlayer) _ytPlayer.mute(); }, 15000);
     }
     function closeDemoVideo() {
       clearTimeout(_ytMuteTimer);
