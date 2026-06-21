@@ -2191,39 +2191,77 @@
    </div><!-- /page-profile -->
 
    <!-- ===================== ABOUT TAB ===================== -->
+   <!-- Video modal (About tab) -->
+   <div id="demoVideoModal" onclick="if(event.target===this)closeDemoVideo()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;padding:16px;">
+     <div style="position:relative;width:100%;max-width:640px;">
+       <button onclick="closeDemoVideo()" style="position:absolute;top:-38px;right:0;background:none;border:none;color:rgba(255,255,255,0.6);font-size:24px;cursor:pointer;padding:4px 8px;line-height:1;">&#x2715;</button>
+       <div style="position:relative;padding-bottom:56.25%;height:0;border-radius:12px;overflow:hidden;">
+         <div id="demoYTPlayer" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
+       </div>
+     </div>
+   </div>
+
    <div class="page" id="page-about">
      <div class="section-title">About</div>
      <div class="section-sub" style="margin-bottom:24px;">The story behind the app.</div>
 
+     <!-- Builder card -->
      <div style="border-radius:16px;overflow:hidden;border:1px solid rgba(200,40,40,0.3);background:rgba(200,40,40,0.06);margin-bottom:20px;">
        <div style="padding:20px 18px 18px;">
          <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:rgba(200,40,40,0.8);margin-bottom:10px;">Builder</div>
          <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">Fernando Gomez</div>
-         <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:18px;">Taught himself to code 6 weeks ago and built FERNFIT from scratch — a WHOOP-connected nutrition and AI coaching app. No CS degree. No prior coding experience. Just a goal and Claude.</div>
-         <button onclick="window.open('https://youtu.be/2G-fibPU6LY','_blank')" style="display:inline-flex;align-items:center;gap:8px;background:rgba(200,40,40,0.18);border:1px solid rgba(200,40,40,0.35);color:rgba(255,180,160,0.95);font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;letter-spacing:0.01em;width:100%;justify-content:center;">
+         <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:6px;">Six weeks ago I had zero coding experience. No CS degree. No bootcamp.</div>
+         <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:18px;">I built FERNFIT because I wanted one app that connected my WHOOP biometrics, tracked my nutrition, and gave me an AI coach that actually knows me &#8212; and nothing like it existed. So I built it myself using Claude as my coding partner.</div>
+         <button onclick="openDemoVideo()" style="display:inline-flex;align-items:center;gap:8px;background:rgba(200,40,40,0.18);border:1px solid rgba(200,40,40,0.35);color:rgba(255,180,160,0.95);font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;letter-spacing:0.01em;width:100%;justify-content:center;">
            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            Watch the 60-second demo
          </button>
        </div>
      </div>
 
+     <!-- What it does -->
      <div style="border-radius:16px;border:1px solid var(--border-soft);background:rgba(255,255,255,0.02);padding:20px 18px;margin-bottom:20px;">
-       <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-quaternary);margin-bottom:12px;">What FERNFIT does</div>
-       <div style="display:flex;flex-direction:column;gap:10px;">
-         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);font-size:16px;margin-top:1px;">◆</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Connects to your <strong style="color:var(--text-primary);">WHOOP</strong> — pulls recovery, HRV, sleep, and strain automatically</span></div>
-         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);font-size:16px;margin-top:1px;">◆</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Logs food by <strong style="color:var(--text-primary);">photo, description, or text</strong> — Claude estimates macros instantly</span></div>
-         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);font-size:16px;margin-top:1px;">◆</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.5;">AI coach that <strong style="color:var(--text-primary);">remembers you</strong> — stores facts across sessions, tailors every response to your data</span></div>
+       <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-quaternary);margin-bottom:14px;">What FERNFIT does</div>
+       <div style="display:flex;flex-direction:column;gap:12px;">
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">WHOOP integration</strong> &#8212; OAuth-connected, pulls recovery score, HRV, resting heart rate, sleep performance, and strain in real time</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">AI food logging</strong> &#8212; snap a photo, describe in text, or scan a barcode; Claude Vision estimates calories + macros instantly</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">Persistent AI coach</strong> &#8212; streams token-by-token via SSE, reads your biometrics + nutrition + workout history, remembers facts about you across every session</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">Voice responses</strong> &#8212; coach replies spoken aloud via OpenAI TTS, played through WebAudio API with synchronized text subtitles</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">Workout logging</strong> &#8212; tracks exercises, sets, reps, weight; coach generates full weekly training programs</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">Trends &amp; history</strong> &#8212; 14-day sparklines for recovery, HRV, weight, calories, protein, and steps; detects patterns like alcohol &#8594; lower next-day HRV</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">Share cards</strong> &#8212; Canvas-rendered recovery and coach-quote cards exportable as PNG via native Web Share API</span></div>
+         <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:rgba(200,40,40,0.8);flex-shrink:0;margin-top:2px;">&#9670;</span><span style="font-size:13px;color:var(--text-secondary);line-height:1.55;"><strong style="color:var(--text-primary);">PWA</strong> &#8212; installable on iOS and Android, runs as a home-screen app with no App Store required</span></div>
        </div>
      </div>
 
+     <!-- Technical details -->
+     <div style="border-radius:16px;border:1px solid var(--border-soft);background:rgba(255,255,255,0.02);padding:20px 18px;margin-bottom:20px;">
+       <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-quaternary);margin-bottom:14px;">Technical details</div>
+       <div style="display:flex;flex-direction:column;gap:10px;">
+         <div style="display:flex;gap:10px;"><span style="font-size:12px;font-weight:600;color:var(--text-tertiary);min-width:90px;flex-shrink:0;">Frontend</span><span style="font-size:12.5px;color:var(--text-secondary);">Single HTML file (~5,000 lines) &#8212; no framework, no bundler, no build step. Two isolated IIFEs share state via window.*</span></div>
+         <div style="display:flex;gap:10px;"><span style="font-size:12px;font-weight:600;color:var(--text-tertiary);min-width:90px;flex-shrink:0;">Backend</span><span style="font-size:12.5px;color:var(--text-secondary);">Vercel serverless functions (ES modules), one file per endpoint, JWT-verified on every request</span></div>
+         <div style="display:flex;gap:10px;"><span style="font-size:12px;font-weight:600;color:var(--text-tertiary);min-width:90px;flex-shrink:0;">Database</span><span style="font-size:12.5px;color:var(--text-secondary);">Supabase Postgres &#8212; auth, profiles, meals, workouts, daily logs, coach memories</span></div>
+         <div style="display:flex;gap:10px;"><span style="font-size:12px;font-weight:600;color:var(--text-tertiary);min-width:90px;flex-shrink:0;">AI</span><span style="font-size:12.5px;color:var(--text-secondary);">Claude API (streaming chat, vision for food photos, structured output to update goals and save memories mid-conversation)</span></div>
+         <div style="display:flex;gap:10px;"><span style="font-size:12px;font-weight:600;color:var(--text-tertiary);min-width:90px;flex-shrink:0;">Streaming</span><span style="font-size:12.5px;color:var(--text-secondary);">SSE (server-sent events) &#8212; coach replies stream token-by-token; TTS queues every 2 sentences in parallel</span></div>
+         <div style="display:flex;gap:10px;"><span style="font-size:12px;font-weight:600;color:var(--text-tertiary);min-width:90px;flex-shrink:0;">Auth</span><span style="font-size:12.5px;color:var(--text-secondary);">Supabase JWT + WHOOP OAuth 2.0 &#8212; tokens stored in localStorage, refreshed automatically</span></div>
+       </div>
+     </div>
+
+     <!-- Stack chips -->
      <div style="border-radius:16px;border:1px solid var(--border-soft);background:rgba(255,255,255,0.02);padding:20px 18px;">
        <div style="font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-quaternary);margin-bottom:12px;">Built with</div>
        <div style="display:flex;flex-wrap:wrap;gap:8px;">
          <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Claude API</span>
-         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">WHOOP API</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">WHOOP API v1 + v2</span>
          <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Supabase</span>
-         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Vercel</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Vercel Serverless</span>
          <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">OpenAI TTS</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">WebAudio API</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Canvas API</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Web Share API</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">BarcodeDetector API</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">SSE Streaming</span>
+         <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">PWA / Service Worker</span>
          <span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border-soft);color:var(--text-secondary);">Vanilla JS</span>
        </div>
      </div>
@@ -5593,6 +5631,35 @@
       try { await loadTrends(); } catch {}
       try { await loadMemories(); } catch {}
       showToast('Demo data loaded ✓');
+    }
+    // ── Demo video modal (YouTube IFrame API, mutes at 15s) ──
+    let _ytPlayer = null, _ytMuteTimer = null;
+    function openDemoVideo() {
+      const modal = $('demoVideoModal');
+      modal.style.display = 'flex';
+      if (_ytPlayer) { _ytPlayer.seekTo(0); _ytPlayer.unMute(); _ytPlayer.playVideo(); scheduleMute(); return; }
+      if (!window.YT) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+      window.onYouTubeIframeAPIReady = function() {
+        _ytPlayer = new YT.Player('demoYTPlayer', {
+          videoId: '2G-fibPU6LY',
+          playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
+          events: { onReady: (e) => { e.target.playVideo(); scheduleMute(); } }
+        });
+      };
+      if (window.YT && window.YT.Player) window.onYouTubeIframeAPIReady();
+    }
+    function scheduleMute() {
+      clearTimeout(_ytMuteTimer);
+      _ytMuteTimer = setTimeout(() => { if (_ytPlayer) _ytPlayer.mute(); }, 15000);
+    }
+    function closeDemoVideo() {
+      clearTimeout(_ytMuteTimer);
+      if (_ytPlayer) { _ytPlayer.pauseVideo(); _ytPlayer.unMute(); }
+      $('demoVideoModal').style.display = 'none';
     }
     function showDemoBanner() {
       if ($('demoBanner')) return;
