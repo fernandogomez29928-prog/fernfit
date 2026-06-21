@@ -5652,6 +5652,8 @@
       if (container) container.innerHTML = '';
       $('demoVideoModal').style.display = 'none';
     }
+    window.openDemoVideo = openDemoVideo;
+    window.closeDemoVideo = closeDemoVideo;
     function showDemoBanner() {
       if ($('demoBanner')) return;
       const b = document.createElement('div');
