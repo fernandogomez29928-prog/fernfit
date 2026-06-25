@@ -2067,6 +2067,7 @@
             <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;animation:neon-pulse 1s ease-in-out infinite"></span>
             SPEAKING
           </span>
+          <button id="chatStopBtn" type="button" onclick="stopSpeaking()" title="Stop talking" style="display:none;align-self:center;margin-left:4px;padding:2px 8px;font:600 10px var(--font-mono);letter-spacing:0.08em;color:var(--danger);background:rgba(200,40,40,0.12);border:1px solid rgba(200,40,40,0.3);border-radius:4px;cursor:pointer;">■ STOP</button>
         </div>
         <div class="chat-input-row">
           <textarea id="chatInput" placeholder="Ask your coach…" rows="1"></textarea>
@@ -3850,19 +3851,24 @@
       }
       const dot = $('voiceSpeakingDot');
       if (dot) dot.style.display = 'none';
+      const stopBtn = $('chatStopBtn');
+      if (stopBtn) stopBtn.style.display = 'none';
       _speaking = false;
     }
+    window.stopSpeaking = stopSpeaking;
 
     async function _ttsPlayNext() {
       if (!_ttsQueue.length) {
         _ttsPlaying = false; _speaking = false;
         const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'none';
+        const stopBtn = $('chatStopBtn'); if (stopBtn) stopBtn.style.display = 'none';
         if (_onTtsDone) { const cb = _onTtsDone; _onTtsDone = null; cb(); }
         if (window._restartMicIfHandsFree) window._restartMicIfHandsFree();
         return;
       }
       _ttsPlaying = true; _speaking = true;
       const dot = $('voiceSpeakingDot'); if (dot) dot.style.display = 'flex';
+      const stopBtn = $('chatStopBtn'); if (stopBtn) stopBtn.style.display = '';
       const { p, onReveal } = _ttsQueue.shift();
       const blob = await p;
       if (!blob || chatMode !== 'voice') { if (onReveal) onReveal(); _ttsPlayNext(); return; }
@@ -4002,7 +4008,7 @@
       const r = await fetch('/api/coach', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ mode: 'chat', stream: true, message: text, whoop: whoop(), body: bodyContext(), history: chatHistory, program: getActiveProgram() }),
+        body: JSON.stringify({ mode: 'chat', stream: true, message: text, whoop: whoop(), body: bodyContext(), history: chatHistory, program: getActiveProgram(), voice: chatMode === 'voice' }),
       });
       if (!r.ok) {
         typingEl.remove();
@@ -4231,6 +4237,7 @@
       _getAudioCtx(); // unlock AudioContext synchronously via user gesture (required on iOS)
       const text = chatInput.value.trim(); if (!text) return;
       chatInput.value = ''; chatInput.style.height = 'auto';
+      if (_speaking) stopSpeaking();
       sendChat(text, null);
     });
     /* ── Voice input ── */

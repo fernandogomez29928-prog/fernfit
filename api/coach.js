@@ -611,7 +611,8 @@ export default async function handler(req, res) {
     const context = fmt({ profile, log, whoop: b.whoop, recent, body: b.body || null, meals, memories, program, workouts });
     const userTurn = mode === 'chat' ? (b.message || 'Give me a quick read on my day.') : instruction;
     const userName = profile?.name?.split(' ')[0] || 'Fernando';
-    const chatExtra = mode === 'chat' ? getChatContextHint(b.message) + getAdaptiveTone(b.message) : '';
+    const voiceHint = (mode === 'chat' && b.voice) ? '\n\n[VOICE MODE: User is listening, not reading. Keep your reply to 2-3 sentences max. No bullet points, no headers, no markdown. Speak like you\'re talking, not writing. If the topic needs more depth, give the short answer now and ask if they want more.]' : '';
+    const chatExtra = mode === 'chat' ? getChatContextHint(b.message) + getAdaptiveTone(b.message) + voiceHint : '';
     textContent = `${context}\n\n---\n\n${mode === 'chat' ? instruction + chatExtra + '\n\n' + userName + ': ' + userTurn : userTurn}`;
   }
 
