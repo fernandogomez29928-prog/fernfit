@@ -5762,26 +5762,19 @@
     })();
 
     (async function bootAuth() {
-      showLogin(); // lock the app until we know the session
+      enterApp(); // login gate disabled — go straight into the app
       try {
         const cfg = await (await fetch('/api/config')).json();
         if (cfg.supabaseUrl && cfg.anonKey && window.supabase) {
           supa = window.supabase.createClient(cfg.supabaseUrl, cfg.anonKey);
         }
       } catch {}
-      if (!supa) {
-        // Backend/Supabase not configured → run unauthenticated in localStorage mode
-        // (endpoints return "not configured" and the app falls back gracefully).
-        enterApp();
-        return;
-      }
+      if (!supa) return;
       supa.auth.onAuthStateChange((_event, session) => {
         _authToken = session?.access_token || null;
-        if (_authToken) enterApp();
       });
       const { data } = await supa.auth.getSession();
-      if (data?.session) { _authToken = data.session.access_token; enterApp(); }
-      else { showLogin(); }
+      if (data?.session) { _authToken = data.session.access_token; }
     })();
   })();
   </script>
